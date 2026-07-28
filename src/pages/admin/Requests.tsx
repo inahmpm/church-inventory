@@ -41,7 +41,7 @@ export default function Requests() {
               <span className="text-xs text-slate-400">{r.items.length} scanned</span>
             </div>
             <div className="text-xs text-slate-500">{r.ministry} · {r.venue}</div>
-            <div className="text-xs text-slate-500">{r.contactNo}</div>
+            <div className="text-xs text-slate-500 truncate">{r.contactNo} · {r.email}</div>
             <div className="text-xs text-slate-500 truncate">Requested: {r.equipmentRequested}</div>
             <div className="text-xs text-slate-400">{new Date(r.submittedAt).toLocaleString()}</div>
             <button className="text-primary-600 hover:underline text-xs pt-1" onClick={() => setOpen(r)}>
@@ -60,7 +60,7 @@ export default function Requests() {
               <Th>Submitted</Th>
               <Th>Name</Th>
               <Th className="hidden lg:table-cell">Ministry</Th>
-              <Th className="hidden lg:table-cell">Contact No.</Th>
+              <Th className="hidden lg:table-cell">Contact</Th>
               <Th className="hidden md:table-cell">Venue</Th>
               <Th className="hidden xl:table-cell">Requested Equipment</Th>
               <Th>Items Scanned</Th>
@@ -70,10 +70,13 @@ export default function Requests() {
           <tbody className="divide-y divide-slate-100">
             {requests.map((r) => (
               <tr key={r.id} className="hover:bg-slate-50">
-                <Td>{new Date(r.submittedAt).toLocaleString()}</Td>
+                <Td className="whitespace-nowrap">{new Date(r.submittedAt).toLocaleString()}</Td>
                 <Td>{r.name}</Td>
                 <Td className="hidden lg:table-cell">{r.ministry}</Td>
-                <Td className="hidden lg:table-cell">{r.contactNo}</Td>
+                <Td className="hidden lg:table-cell">
+                  <div>{r.contactNo}</div>
+                  <div className="text-xs text-slate-400">{r.email}</div>
+                </Td>
                 <Td className="hidden md:table-cell">{r.venue}</Td>
                 <Td className="hidden xl:table-cell max-w-xs truncate" title={r.equipmentRequested}>
                   {r.equipmentRequested}
@@ -138,7 +141,7 @@ function ScanPanel({ request, onClose }: { request: BorrowRequest; onClose: () =
         <div>
           <h2 className="font-semibold text-slate-800 text-lg">{request.name}</h2>
           <p className="text-sm text-slate-500">
-            {request.ministry} · {request.venue} · {request.contactNo}
+            {request.ministry} · {request.venue} · {request.contactNo} · {request.email}
           </p>
           <p className="text-sm text-slate-500 mt-1">
             Requested: <span className="italic">{request.equipmentRequested}</span>
