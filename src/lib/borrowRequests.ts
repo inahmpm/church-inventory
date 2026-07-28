@@ -12,11 +12,16 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { logHistory } from './historyLogs';
+import { getMinistry } from './ministries';
+import { itemsListHtml, sendTemplateEmail } from './emailjs';
 import type { BorrowRequest, BorrowedItem } from '../types';
 
 const requestsCol = collection(db, 'borrowRequests');
 const equipmentCol = collection(db, 'equipment');
 const mailCol = collection(db, 'mail');
+
+const handedOutTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_HANDED_OUT;
+const returnedTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_RETURNED;
 
 function sendMail(ministryId: string, to: string, subject: string, html: string) {
   return addDoc(mailCol, { ministryId, to, message: { subject, html } });
@@ -42,17 +47,30 @@ export async function submitBorrowRequest(input: PublicBorrowInput, notification
     fulfilledAt: null,
     returnedAt: null,
   });
-  await sendMail(
-    input.ministryId,
-    notificationEmail,
-    `New borrow request from ${input.name}`,
-    `<p><strong>${input.name}</strong> (${input.ministry}) submitted a new equipment borrow request.</p>
-     <ul>
+  const requestSummary = `<ul>
        <li><strong>Contact No.:</strong> ${input.contactNo}</li>
        <li><strong>Venue:</strong> ${input.venue}</li>
        <li><strong>Equipment requested:</strong> ${input.equipmentRequested}</li>
-     </ul>`,
-  );
+     </ul>`;
+  const mails = [
+    sendMail(
+      input.ministryId,
+      notificationEmail,
+      `New borrow request from ${input.name}`,
+      `<p><strong>${input.name}</strong> (${input.ministry}) submitted a new equipment borrow request.</p>${requestSummary}`,
+    ),
+  ];
+  if (input.email) {
+    mails.push(
+      sendMail(
+        input.ministryId,
+        input.email,
+        'Your borrow request was submitted',
+        `<p>Hi ${input.name}, your equipment borrow request has been received and is pending approval.</p>${requestSummary}`,
+      ),
+    );
+  }
+  await Promise.all(mails);
 }
 
 export function subscribeBorrowRequests(
@@ -175,14 +193,24 @@ export async function finalizeRequest(requestId: string) {
       }),
     ),
   );
-  await sendMail(
-    req.ministryId,
-    req.email,
-    'Your equipment is ready for pick-up',
-    `<p>Hi ${req.name}, the following equipment has been handed out to you:</p>
-     <ul>${req.items.map((i) => `<li>${i.item} (${i.inventoryCode})</li>`).join('')}</ul>
-     <p>Please return it once you're done.</p>`,
-  );
+  const ministry = await getMinistry(req.ministryId);
+  const mails = [
+    sendTemplateEmail(handedOutTemplateId, {
+      to_email: req.email,
+      to_name: req.name,
+      items_list: itemsListHtml(req.items),
+    }),
+  ];
+  if (ministry?.notificationEmail) {
+    mails.push(
+      sendTemplateEmail(handedOutTemplateId, {
+        to_email: ministry.notificationEmail,
+        to_name: `${req.name} (${req.ministry})`,
+        items_list: itemsListHtml(req.items),
+      }),
+    );
+  }
+  await Promise.all(mails);
 }
 
 export async function markItemsReturned(requestId: string) {
@@ -213,11 +241,22 @@ export async function markItemsReturned(requestId: string) {
       }),
     ),
   );
-  await sendMail(
-    req.ministryId,
-    req.email,
-    'Equipment return confirmed',
-    `<p>Hi ${req.name}, thanks for returning the following equipment:</p>
-     <ul>${req.items.map((i) => `<li>${i.item} (${i.inventoryCode})</li>`).join('')}</ul>`,
-  );
+  const ministry = await getMinistry(req.ministryId);
+  const mails = [
+    sendTemplateEmail(returnedTemplateId, {
+      to_email: req.email,
+      to_name: req.name,
+      items_list: itemsListHtml(req.items),
+    }),
+  ];
+  if (ministry?.notificationEmail) {
+    mails.push(
+      sendTemplateEmail(returnedTemplateId, {
+        to_email: ministry.notificationEmail,
+        to_name: `${req.name} (${req.ministry})`,
+        items_list: itemsListHtml(req.items),
+      }),
+    );
+  }
+  await Promise.all(mails);
 }
