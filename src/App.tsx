@@ -8,6 +8,7 @@ import Inventory from './pages/admin/Inventory';
 import Requests from './pages/admin/Requests';
 import ActiveBorrows from './pages/admin/ActiveBorrows';
 import ReturnHistory from './pages/admin/ReturnHistory';
+import BorrowRequestHistory from './pages/admin/BorrowRequestHistory';
 import HistoryLogs from './pages/admin/HistoryLogs';
 import Categories from './pages/admin/Categories';
 import Report from './pages/admin/Report';
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="requests" element={<Requests />} />
           <Route path="active" element={<ActiveBorrows />} />
           <Route path="history" element={<ReturnHistory />} />
+          <Route path="request-history" element={<BorrowRequestHistory />} />
           <Route path="logs" element={<HistoryLogs />} />
           <Route path="categories" element={<Categories />} />
           <Route path="report" element={<Report />} />
