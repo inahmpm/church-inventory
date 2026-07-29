@@ -47,6 +47,63 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'availability', label: 'Availability', className: 'hidden sm:table-cell' },
 ];
 
+function IconPrinter() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-6a1 1 0 011-1h16a1 1 0 011 1v6a1 1 0 01-1 1h-2M6 14h12v7H6z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M4 7h16M9 7V4h6v3m-8 0 1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconFilter() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M4 5h16l-6 7v6l-4 2v-8z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconUpload() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M12 16V4m0 0 4 4m-4-4-4 4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconDownload() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M12 4v12m0 0 4-4m-4 4-4-4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M12 4v16M4 12h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconSearch() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function availabilityLabel(e: Equipment) {
   if (e.assignedType === 'Fixed') {
     return <span className="text-slate-500 font-medium">Fixed — not borrowable</span>;
@@ -277,39 +334,71 @@ export default function Inventory() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold text-slate-800">Equipment Inventory</h1>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold text-slate-800">Equipment Inventory</h1>
+          <button
+            className="btn-primary whitespace-nowrap shrink-0 inline-flex items-center gap-1.5"
+            onClick={() => setSelected('new')}
+            aria-label="Add Equipment"
+          >
+            <IconPlus />
+            <span className="hidden sm:inline">Add Equipment</span>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[10rem]">
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <IconSearch />
+            </span>
+            <input
+              className="input w-full pl-8"
+              placeholder="Search inventory..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
           {selectedIds.size > 0 && (
-            <button className="btn-secondary whitespace-nowrap" onClick={handleBulkPrint}>
-              Print QR Codes ({selectedIds.size})
+            <button
+              className="btn-secondary whitespace-nowrap inline-flex items-center gap-1.5"
+              onClick={handleBulkPrint}
+              title={`Print QR Codes (${selectedIds.size})`}
+              aria-label={`Print QR Codes (${selectedIds.size})`}
+            >
+              <IconPrinter />
+              <span className="hidden md:inline">Print QR ({selectedIds.size})</span>
             </button>
           )}
           {selectedIds.size > 0 && (
-            <button className="btn-secondary whitespace-nowrap text-red-600" onClick={handleBulkDelete}>
-              Delete Selected ({selectedIds.size})
+            <button
+              className="btn-secondary whitespace-nowrap text-red-600 inline-flex items-center gap-1.5"
+              onClick={handleBulkDelete}
+              title={`Delete Selected (${selectedIds.size})`}
+              aria-label={`Delete Selected (${selectedIds.size})`}
+            >
+              <IconTrash />
+              <span className="hidden md:inline">Delete Selected ({selectedIds.size})</span>
             </button>
           )}
-          <input
-            className="input w-full sm:w-64"
-            placeholder="Search inventory..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
           <div className="relative" ref={filterRef}>
             <button
-              className="btn-secondary whitespace-nowrap relative"
+              className="btn-secondary whitespace-nowrap relative inline-flex items-center gap-1.5"
               onClick={() => setShowFilters((v) => !v)}
+              title="Filter"
+              aria-label="Filter"
             >
-              Filter
+              <IconFilter />
+              <span className="hidden md:inline">Filter</span>
               {activeFilterCount > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] w-4 h-4 align-middle">
+                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] w-4 h-4 align-middle">
                   {activeFilterCount}
                 </span>
               )}
             </button>
             {showFilters && (
-              <div className="absolute right-0 sm:right-auto mt-2 w-64 card p-4 space-y-3 z-30 shadow-lg">
+              <div className="absolute right-0 mt-2 w-64 card p-4 space-y-3 z-30 shadow-lg">
                 <Field label="Category">
                   <select className="input" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                     <option value="">All</option>
@@ -363,18 +452,33 @@ export default function Inventory() {
               </div>
             )}
           </div>
-          <button className="btn-secondary whitespace-nowrap" onClick={() => setImporting(true)}>
-            Import Inventory
+          <button
+            className="btn-secondary whitespace-nowrap inline-flex items-center gap-1.5"
+            onClick={() => setImporting(true)}
+            title="Import Inventory"
+            aria-label="Import Inventory"
+          >
+            <IconUpload />
+            <span className="hidden md:inline">Import</span>
           </button>
-          <button className="btn-secondary whitespace-nowrap" onClick={() => setExporting(true)}>
-            Export Inventory
-          </button>
-          <button className="btn-primary whitespace-nowrap" onClick={() => setSelected('new')}>
-            + Add Equipment
+          <button
+            className="btn-secondary whitespace-nowrap inline-flex items-center gap-1.5"
+            onClick={() => setExporting(true)}
+            title="Export Inventory"
+            aria-label="Export Inventory"
+          >
+            <IconDownload />
+            <span className="hidden md:inline">Export</span>
           </button>
           {equipment.length > 0 && (
-            <button className="btn-secondary whitespace-nowrap text-red-600" onClick={handleDeleteAll}>
-              Delete All
+            <button
+              className="btn-secondary whitespace-nowrap text-red-600 inline-flex items-center gap-1.5"
+              onClick={handleDeleteAll}
+              title="Delete All"
+              aria-label="Delete All"
+            >
+              <IconTrash />
+              <span className="hidden md:inline">Delete All</span>
             </button>
           )}
         </div>
