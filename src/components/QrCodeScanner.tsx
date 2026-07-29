@@ -1,25 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 /**
  * Accepts input from either a camera scan (html5-qrcode) or a USB/Bluetooth
- * barcode scanner, which behaves like a keyboard typing digits followed by Enter.
+ * QR code scanner, which behaves like a keyboard typing text followed by Enter.
  */
-export default function BarcodeScanner({ onScan }: { onScan: (code: string) => void }) {
+export default function QrCodeScanner({ onScan }: { onScan: (code: string) => void }) {
   const [manualCode, setManualCode] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const regionId = 'barcode-scanner-region';
+  const regionId = 'qr-scanner-region';
 
   useEffect(() => {
     if (!cameraOn) return;
-    const scanner = new Html5Qrcode(regionId);
+    const scanner = new Html5Qrcode(regionId, {
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      verbose: false,
+    });
     scannerRef.current = scanner;
     scanner
       .start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
           onScan(decodedText.trim());
         },
@@ -49,7 +52,7 @@ export default function BarcodeScanner({ onScan }: { onScan: (code: string) => v
         <input
           autoFocus
           className="input font-mono"
-          placeholder="Scan with USB scanner or type barcode, then Enter"
+          placeholder="Scan with USB scanner or type QR code value, then Enter"
           value={manualCode}
           onChange={(e) => setManualCode(e.target.value)}
         />
@@ -64,7 +67,7 @@ export default function BarcodeScanner({ onScan }: { onScan: (code: string) => v
           className="text-sm text-primary-600 hover:underline"
           onClick={() => setCameraOn((v) => !v)}
         >
-          {cameraOn ? 'Turn off camera scanner' : 'Use camera to scan barcode'}
+          {cameraOn ? 'Turn off camera scanner' : 'Use camera to scan QR code'}
         </button>
       </div>
 

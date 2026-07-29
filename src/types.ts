@@ -56,7 +56,7 @@ export interface Equipment {
   ministryId: string;
   category: string;
   subcategory: string;
-  inventoryCode: string; // unique barcode value
+  inventoryCode: string; // unique QR code value
   item: string;
   serialNumber: string;
   assignedType: AssignedType;

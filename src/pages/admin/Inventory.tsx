@@ -15,6 +15,7 @@ import type { AssignedType, Category, Equipment, NewEquipment } from '../../type
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
 import ExportInventoryModal from '../../components/ExportInventoryModal';
+import { printQrLabels } from '../../lib/printQrLabels';
 
 const PAGE_SIZE = 20;
 
@@ -246,6 +247,11 @@ export default function Inventory() {
     setSelectedIds(new Set());
   }
 
+  async function handleBulkPrint() {
+    const selectedItems = equipment.filter((e) => selectedIds.has(e.id));
+    await printQrLabels(selectedItems);
+  }
+
   async function handleDeleteAll() {
     const borrowed = equipment.filter((e) => e.isBorrowed);
     const deletable = equipment.filter((e) => !e.isBorrowed);
@@ -274,6 +280,11 @@ export default function Inventory() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold text-slate-800">Equipment Inventory</h1>
         <div className="flex flex-wrap gap-2">
+          {selectedIds.size > 0 && (
+            <button className="btn-secondary whitespace-nowrap" onClick={handleBulkPrint}>
+              Print QR Codes ({selectedIds.size})
+            </button>
+          )}
           {selectedIds.size > 0 && (
             <button className="btn-secondary whitespace-nowrap text-red-600" onClick={handleBulkDelete}>
               Delete Selected ({selectedIds.size})
