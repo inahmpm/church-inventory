@@ -380,6 +380,13 @@ export default function Inventory() {
             >
               <IconTrash />
               <span className="hidden md:inline">Delete Selected ({selectedIds.size})</span>
+            <button className="btn-secondary whitespace-nowrap" onClick={handleBulkPrint}>
+              Print QR Codes ({selectedIds.size})
+            </button>
+          )}
+          {selectedIds.size > 0 && (
+            <button className="btn-secondary whitespace-nowrap text-red-600" onClick={handleBulkDelete}>
+              Delete Selected ({selectedIds.size})
             </button>
           )}
           <div className="relative" ref={filterRef}>
