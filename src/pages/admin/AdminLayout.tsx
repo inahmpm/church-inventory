@@ -51,6 +51,7 @@ export default function AdminLayout() {
         { to: '/admin/requests', label: 'Borrow Requests', count: pendingCount },
         { to: '/admin/active', label: 'Active Borrows', count: activeCount },
         { to: '/admin/history', label: 'Return History' },
+        { to: '/admin/request-history', label: 'Borrow Request History' },
         ...(ministry?.slug
           ? [{ to: `/borrow/${ministry.slug}`, label: "Borrower's Form", external: true }]
           : []),
