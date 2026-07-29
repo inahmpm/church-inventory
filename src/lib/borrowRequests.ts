@@ -90,7 +90,7 @@ export function subscribeBorrowRequests(
 }
 
 /**
- * Scans one barcode and attaches the matching equipment to a pending request.
+ * Scans one QR code and attaches the matching equipment to a pending request.
  * Runs as a transaction so an item can't be attached to two active borrows at once.
  */
 export async function scanEquipmentIntoRequest(requestId: string, ministryId: string, inventoryCode: string) {
@@ -100,7 +100,7 @@ export async function scanEquipmentIntoRequest(requestId: string, ministryId: st
     where('inventoryCode', '==', inventoryCode),
   );
   const snap = await getDocs(q);
-  if (snap.empty) throw new Error(`No equipment found with barcode "${inventoryCode}"`);
+  if (snap.empty) throw new Error(`No equipment found with QR code "${inventoryCode}"`);
   const newItem = await runTransaction(db, async (tx) => {
     const equipDoc = snap.docs[0];
     const equipRef = doc(db, 'equipment', equipDoc.id);

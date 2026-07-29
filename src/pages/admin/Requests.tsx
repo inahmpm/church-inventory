@@ -7,7 +7,7 @@ import {
 } from '../../lib/borrowRequests';
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import type { BorrowRequest } from '../../types';
-import BarcodeScanner from '../../components/BarcodeScanner';
+import QrCodeScanner from '../../components/QrCodeScanner';
 
 export default function Requests() {
   const { profile } = useCurrentUser();
@@ -148,7 +148,7 @@ function ScanPanel({ request, onClose }: { request: BorrowRequest; onClose: () =
           </p>
         </div>
 
-        <BarcodeScanner onScan={handleScan} />
+        <QrCodeScanner onScan={handleScan} />
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div>

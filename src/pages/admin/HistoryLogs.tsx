@@ -101,7 +101,7 @@ export default function HistoryLogs() {
               <thead>
                 <tr className="text-left text-slate-500 border-b border-slate-200">
                   <th className="py-2 pr-4 font-medium">Item</th>
-                  <th className="py-2 pr-4 font-medium">Barcode</th>
+                  <th className="py-2 pr-4 font-medium">QR Code</th>
                   <th className="py-2 pr-4 font-medium">Action</th>
                   <th className="py-2 pr-4 font-medium">Details</th>
                   <th className="py-2 pr-4 font-medium hidden md:table-cell">By</th>
