@@ -61,6 +61,8 @@ export interface Equipment {
   serialNumber: string;
   assignedType: AssignedType;
   assignedTo: string;
+  department: string;
+  ministry: string;
   location: string;
   purchaseDate: string; // yyyy-mm-dd
   status: EquipmentStatus;

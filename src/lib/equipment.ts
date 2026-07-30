@@ -25,6 +25,8 @@ const FIELD_LABELS: Partial<Record<keyof NewEquipment, string>> = {
   serialNumber: 'Serial Number',
   assignedType: 'Assigned Type',
   assignedTo: 'Assigned To',
+  department: 'Department',
+  ministry: 'Ministry',
   location: 'Location',
   purchaseDate: 'Purchase Date',
   status: 'Status',
