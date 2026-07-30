@@ -132,6 +132,7 @@ export default function Inventory() {
   const [exporting, setExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [subcategoryFilter, setSubcategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [assignedTypeFilter, setAssignedTypeFilter] = useState<'' | AssignedType>('');
   const [availabilityFilter, setAvailabilityFilter] = useState<'' | 'available' | 'borrowed'>('');
@@ -169,9 +170,26 @@ export default function Inventory() {
     [equipment],
   );
 
-  const activeFilterCount = [categoryFilter, statusFilter, assignedTypeFilter, availabilityFilter].filter(
-    Boolean,
-  ).length;
+  const subcategoryFilterOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          equipment
+            .filter((e) => !categoryFilter || e.category === categoryFilter)
+            .map((e) => e.subcategory)
+            .filter((s): s is string => Boolean(s)),
+        ),
+      ).sort(),
+    [equipment, categoryFilter],
+  );
+
+  const activeFilterCount = [
+    categoryFilter,
+    subcategoryFilter,
+    statusFilter,
+    assignedTypeFilter,
+    availabilityFilter,
+  ].filter(Boolean).length;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -193,13 +211,14 @@ export default function Inventory() {
         if (!matches) return false;
       }
       if (categoryFilter && e.category !== categoryFilter) return false;
+      if (subcategoryFilter && e.subcategory !== subcategoryFilter) return false;
       if (statusFilter && e.status !== statusFilter) return false;
       if (assignedTypeFilter && e.assignedType !== assignedTypeFilter) return false;
       if (availabilityFilter === 'available' && (e.assignedType !== 'Borrowable' || e.isBorrowed)) return false;
       if (availabilityFilter === 'borrowed' && (e.assignedType !== 'Borrowable' || !e.isBorrowed)) return false;
       return true;
     });
-  }, [equipment, search, categoryFilter, statusFilter, assignedTypeFilter, availabilityFilter]);
+  }, [equipment, search, categoryFilter, subcategoryFilter, statusFilter, assignedTypeFilter, availabilityFilter]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === 'asc' ? 1 : -1;
@@ -212,7 +231,13 @@ export default function Inventory() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoryFilter, statusFilter, assignedTypeFilter, availabilityFilter, sortKey, sortDir]);
+  }, [search, categoryFilter, subcategoryFilter, statusFilter, assignedTypeFilter, availabilityFilter, sortKey, sortDir]);
+
+  useEffect(() => {
+    if (subcategoryFilter && !subcategoryFilterOptions.includes(subcategoryFilter)) {
+      setSubcategoryFilter('');
+    }
+  }, [subcategoryFilterOptions, subcategoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -260,6 +285,7 @@ export default function Inventory() {
 
   function clearFilters() {
     setCategoryFilter('');
+    setSubcategoryFilter('');
     setStatusFilter('');
     setAssignedTypeFilter('');
     setAvailabilityFilter('');
@@ -405,6 +431,21 @@ export default function Inventory() {
                     {categoryFilterOptions.map((c) => (
                       <option key={c} value={c}>
                         {c}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Subcategory">
+                  <select
+                    className="input"
+                    value={subcategoryFilter}
+                    onChange={(e) => setSubcategoryFilter(e.target.value)}
+                    disabled={subcategoryFilterOptions.length === 0}
+                  >
+                    <option value="">All</option>
+                    {subcategoryFilterOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
                       </option>
                     ))}
                   </select>
