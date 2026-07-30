@@ -202,6 +202,24 @@ export default function EquipmentPanel({
             />
           </Field>
 
+          <Field label="Department">
+            <input
+              className="input"
+              value={form.department}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              placeholder="e.g. Worship (optional)"
+            />
+          </Field>
+
+          <Field label="Ministry">
+            <input
+              className="input"
+              value={form.ministry}
+              onChange={(e) => setForm({ ...form, ministry: e.target.value })}
+              placeholder="e.g. Youth Ministry (optional)"
+            />
+          </Field>
+
           <Field label="Location">
             <input
               className="input"
@@ -351,6 +369,8 @@ function blankForm(ministryId: string, initial?: Equipment): NewEquipment {
     serialNumber: initial?.serialNumber ?? '',
     assignedType: initial?.assignedType ?? 'Borrowable',
     assignedTo: initial?.assignedTo ?? '',
+    department: initial?.department ?? '',
+    ministry: initial?.ministry ?? '',
     location: initial?.location ?? '',
     purchaseDate: initial?.purchaseDate ?? '',
     status: initial?.status ?? 'Good Condition',

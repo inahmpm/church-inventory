@@ -27,6 +27,8 @@ type SortKey =
   | 'serialNumber'
   | 'assignedType'
   | 'assignedTo'
+  | 'department'
+  | 'ministry'
   | 'location'
   | 'purchaseDate'
   | 'status'
@@ -41,6 +43,8 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'serialNumber', label: 'Serial Number', className: 'hidden lg:table-cell' },
   { key: 'assignedType', label: 'Assigned Type' },
   { key: 'assignedTo', label: 'Assigned to', className: 'hidden md:table-cell' },
+  { key: 'department', label: 'Department', className: 'hidden lg:table-cell' },
+  { key: 'ministry', label: 'Ministry', className: 'hidden lg:table-cell' },
   { key: 'location', label: 'Location', className: 'hidden lg:table-cell' },
   { key: 'purchaseDate', label: 'Purchase Date', className: 'hidden xl:table-cell' },
   { key: 'status', label: 'Status' },
@@ -202,6 +206,8 @@ export default function Inventory() {
           e.item,
           e.serialNumber,
           e.assignedTo,
+          e.department,
+          e.ministry,
           e.location,
           e.status,
         ]
@@ -610,6 +616,8 @@ export default function Inventory() {
                   <Td className="hidden lg:table-cell font-mono">{e.serialNumber || '—'}</Td>
                   <Td>{e.assignedType}</Td>
                   <Td className="hidden md:table-cell">{e.assignedTo || '—'}</Td>
+                  <Td className="hidden lg:table-cell">{e.department || '—'}</Td>
+                  <Td className="hidden lg:table-cell">{e.ministry || '—'}</Td>
                   <Td className="hidden lg:table-cell">{e.location || '—'}</Td>
                   <Td className="hidden xl:table-cell">{e.purchaseDate || '—'}</Td>
                   <Td>
@@ -624,7 +632,7 @@ export default function Inventory() {
             })}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={13} className="text-center text-slate-400 py-8">
+                <td colSpan={15} className="text-center text-slate-400 py-8">
                   No equipment found.
                 </td>
               </tr>

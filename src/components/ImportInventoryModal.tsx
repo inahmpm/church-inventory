@@ -24,6 +24,8 @@ const HEADER_ALIASES: Record<string, keyof ImportableEquipment> = {
   assignedtype: 'assignedType',
   'assigned to': 'assignedTo',
   assignedto: 'assignedTo',
+  department: 'department',
+  ministry: 'ministry',
   location: 'location',
   'purchase date': 'purchaseDate',
   purchasedate: 'purchaseDate',
@@ -78,6 +80,8 @@ function parseRows(text: string): ParsedRow[] {
         item,
         assignedType,
         assignedTo: get('assignedTo'),
+        department: get('department'),
+        ministry: get('ministry'),
         location: get('location'),
         purchaseDate: get('purchaseDate'),
         status,
@@ -138,8 +142,8 @@ export default function ImportInventoryModal({
         <h2 className="font-semibold text-slate-800 text-lg">Import Inventory</h2>
         <p className="text-sm text-slate-500">
           Upload a CSV with columns: Category, Subcategory, Inventory Code, Serial Number, Item, Assigned Type,
-          Assigned To, Location, Purchase Date, Status, Status Details. Only Item is required (Assigned Type
-          defaults to Borrowable).
+          Assigned To, Department, Ministry, Location, Purchase Date, Status, Status Details. Only Item is required
+          (Assigned Type defaults to Borrowable).
         </p>
 
         <input
