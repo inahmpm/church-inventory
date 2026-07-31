@@ -33,6 +33,8 @@ export default function EquipmentPulloutPage() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [pullouts, setPullouts] = useState<EquipmentPullout[]>([]);
   const [equipmentId, setEquipmentId] = useState('');
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [equipmentDropdownOpen, setEquipmentDropdownOpen] = useState(false);
   const [area, setArea] = useState('');
   const [pulloutAt, setPulloutAt] = useState(() => toDatetimeLocal(Date.now()));
   const [saving, setSaving] = useState(false);
@@ -53,8 +55,23 @@ export default function EquipmentPulloutPage() {
     [equipment],
   );
 
+  const matchingEquipment = useMemo(() => {
+    const term = equipmentSearch.trim().toLowerCase();
+    if (!term) return sortedEquipment;
+    return sortedEquipment.filter(
+      (eq) => eq.item.toLowerCase().includes(term) || eq.inventoryCode.toLowerCase().includes(term),
+    );
+  }, [sortedEquipment, equipmentSearch]);
+
+  const selectEquipment = (eq: Equipment) => {
+    setEquipmentId(eq.id);
+    setEquipmentSearch(`${eq.item} (${eq.inventoryCode})`);
+    setEquipmentDropdownOpen(false);
+  };
+
   const resetForm = () => {
     setEquipmentId('');
+    setEquipmentSearch('');
     setArea('');
     setPulloutAt(toDatetimeLocal(Date.now()));
   };
@@ -126,22 +143,41 @@ export default function EquipmentPulloutPage() {
       <h1 className="hidden print:block text-xl font-semibold text-slate-800">Equipment Pullout</h1>
 
       <form onSubmit={handleSubmit} className="card p-4 space-y-4 max-w-xl print:hidden">
-        <div>
+        <div className="relative">
           <label className="block text-sm font-medium text-slate-700 mb-1">Equipment Name</label>
-          <select
+          <input
             className="input"
-            value={equipmentId}
-            onChange={(e) => setEquipmentId(e.target.value)}
-          >
-            <option value="" disabled>
-              Select equipment...
-            </option>
-            {sortedEquipment.map((eq) => (
-              <option key={eq.id} value={eq.id}>
-                {eq.item} ({eq.inventoryCode})
-              </option>
-            ))}
-          </select>
+            value={equipmentSearch}
+            onChange={(e) => {
+              setEquipmentSearch(e.target.value);
+              setEquipmentId('');
+              setEquipmentDropdownOpen(true);
+            }}
+            onFocus={() => setEquipmentDropdownOpen(true)}
+            onBlur={() => setTimeout(() => setEquipmentDropdownOpen(false), 150)}
+            placeholder="Search equipment by name or code..."
+            autoComplete="off"
+          />
+          {equipmentDropdownOpen && (
+            <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+              {matchingEquipment.length === 0 && (
+                <div className="px-3 py-2 text-sm text-slate-400">No matching equipment.</div>
+              )}
+              {matchingEquipment.map((eq) => (
+                <button
+                  key={eq.id}
+                  type="button"
+                  className={`block w-full text-left px-3 py-2 text-sm hover:bg-slate-100 ${
+                    eq.id === equipmentId ? 'bg-primary-50 text-primary-700' : 'text-slate-700'
+                  }`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => selectEquipment(eq)}
+                >
+                  {eq.item} <span className="text-slate-400 font-mono text-xs">({eq.inventoryCode})</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
