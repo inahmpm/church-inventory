@@ -55,6 +55,10 @@ export default function EquipmentPulloutPage() {
       setError('Enter the area.');
       return;
     }
+    if (!pulloutAt || Number.isNaN(new Date(pulloutAt).getTime())) {
+      setError('Enter the date and time of pullout.');
+      return;
+    }
     setError('');
     setSaving(true);
     try {
@@ -84,7 +88,6 @@ export default function EquipmentPulloutPage() {
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Equipment Name</label>
           <select
-            required
             className="input"
             value={equipmentId}
             onChange={(e) => setEquipmentId(e.target.value)}
@@ -103,7 +106,6 @@ export default function EquipmentPulloutPage() {
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Area</label>
           <input
-            required
             className="input"
             value={area}
             onChange={(e) => setArea(e.target.value)}
@@ -114,7 +116,6 @@ export default function EquipmentPulloutPage() {
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Date and Time of Pullout</label>
           <input
-            required
             type="datetime-local"
             className="input"
             value={pulloutAt}
