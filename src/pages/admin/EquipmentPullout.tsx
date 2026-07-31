@@ -20,9 +20,6 @@ function IconTrash() {
     </svg>
   );
 }
-import { createPullout, subscribePullouts } from '../../lib/equipmentPullouts';
-import { useCurrentUser } from '../../lib/useCurrentUser';
-import type { Equipment, EquipmentPullout } from '../../types';
 
 function toDatetimeLocal(ts: number): string {
   const d = new Date(ts);
@@ -40,9 +37,6 @@ export default function EquipmentPulloutPage() {
   const [equipmentId, setEquipmentId] = useState('');
   const [equipmentSearch, setEquipmentSearch] = useState('');
   const [equipmentDropdownOpen, setEquipmentDropdownOpen] = useState(false);
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [pullouts, setPullouts] = useState<EquipmentPullout[]>([]);
-  const [equipmentId, setEquipmentId] = useState('');
   const [area, setArea] = useState('');
   const [pulloutAt, setPulloutAt] = useState(() => toDatetimeLocal(Date.now()));
   const [saving, setSaving] = useState(false);
@@ -88,8 +82,6 @@ export default function EquipmentPulloutPage() {
   const resetForm = () => {
     setEquipmentId('');
     setEquipmentSearch('');
-  const resetForm = () => {
-    setEquipmentId('');
     setArea('');
     setPulloutAt(toDatetimeLocal(Date.now()));
   };
@@ -199,34 +191,11 @@ export default function EquipmentPulloutPage() {
               ))}
             </div>
           )}
-  return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-800">Equipment Pullout</h1>
-
-      <form onSubmit={handleSubmit} className="card p-4 space-y-4 max-w-xl">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Equipment Name</label>
-          <select
-            required
-            className="input"
-            value={equipmentId}
-            onChange={(e) => setEquipmentId(e.target.value)}
-          >
-            <option value="" disabled>
-              Select equipment...
-            </option>
-            {sortedEquipment.map((eq) => (
-              <option key={eq.id} value={eq.id}>
-                {eq.item} ({eq.inventoryCode})
-              </option>
-            ))}
-          </select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Area</label>
           <input
-            required
             className="input"
             value={area}
             onChange={(e) => setArea(e.target.value)}
@@ -237,7 +206,6 @@ export default function EquipmentPulloutPage() {
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Date and Time of Pullout</label>
           <input
-            required
             type="datetime-local"
             className="input"
             value={pulloutAt}
@@ -260,7 +228,6 @@ export default function EquipmentPulloutPage() {
         <>
           {/* Mobile card list */}
           <div className="space-y-2 sm:hidden print:hidden">
-          <div className="space-y-2 sm:hidden">
             {rows.map((p) => (
               <div key={p.id} className="card p-3 space-y-1">
                 <div className="flex items-center justify-between">
@@ -289,7 +256,6 @@ export default function EquipmentPulloutPage() {
 
           {/* Desktop / tablet table */}
           <div className="card p-0 overflow-x-auto hidden sm:block print:block print:shadow-none print:ring-0">
-          <div className="card p-0 overflow-x-auto hidden sm:block">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-slate-500 text-left">
                 <tr>
@@ -301,10 +267,6 @@ export default function EquipmentPulloutPage() {
                   <Th className="print:hidden">
                     <span className="sr-only">Actions</span>
                   </Th>
-                  <Th className="hidden md:table-cell">Inventory Code</Th>
-                  <Th>Area</Th>
-                  <Th>Date &amp; Time</Th>
-                  <Th className="hidden lg:table-cell">Logged By</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -326,10 +288,6 @@ export default function EquipmentPulloutPage() {
                         <IconTrash />
                       </button>
                     </Td>
-                    <Td className="hidden md:table-cell font-mono text-xs">{p.inventoryCode}</Td>
-                    <Td>{p.area}</Td>
-                    <Td className="whitespace-nowrap">{new Date(p.pulloutAt).toLocaleString()}</Td>
-                    <Td className="hidden lg:table-cell">{p.actor ?? '—'}</Td>
                   </tr>
                 ))}
               </tbody>

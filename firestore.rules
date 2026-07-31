@@ -101,9 +101,6 @@ service cloud.firestore {
       allow read, delete: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
       allow create: if isSuperAdmin() || sameMinistry(request.resource.data.ministryId);
       allow update: if false;
-      allow read: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
-      allow create: if isSuperAdmin() || sameMinistry(request.resource.data.ministryId);
-      allow update, delete: if false;
     }
 
     // History logs: an immutable audit trail of every inventory movement
