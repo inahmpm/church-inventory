@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { createPullout, deletePullout, subscribePullouts } from '../../lib/equipmentPullouts';
+import { getMinistry } from '../../lib/ministries';
 import { useCurrentUser } from '../../lib/useCurrentUser';
-import type { Equipment, EquipmentPullout } from '../../types';
+import type { Equipment, EquipmentPullout, Ministry } from '../../types';
 
 function IconPrinter() {
   return (
@@ -30,6 +31,7 @@ export default function EquipmentPulloutPage() {
   const { profile } = useCurrentUser();
   const ministryId = profile?.ministryId;
 
+  const [ministry, setMinistry] = useState<Ministry | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [pullouts, setPullouts] = useState<EquipmentPullout[]>([]);
   const [equipmentId, setEquipmentId] = useState('');
@@ -39,6 +41,14 @@ export default function EquipmentPulloutPage() {
   const [pulloutAt, setPulloutAt] = useState(() => toDatetimeLocal(Date.now()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!ministryId) {
+      setMinistry(null);
+      return;
+    }
+    getMinistry(ministryId).then(setMinistry);
+  }, [ministryId]);
 
   useEffect(() => {
     if (!ministryId) return;
@@ -140,7 +150,10 @@ export default function EquipmentPulloutPage() {
           </button>
         )}
       </div>
-      <h1 className="hidden print:block text-xl font-semibold text-slate-800">Equipment Pullout</h1>
+      <div className="hidden print:block">
+        <h1 className="text-xl font-semibold text-slate-800">Equipment Pullout</h1>
+        {ministry && <p className="text-sm text-slate-600">Ministry: {ministry.name}</p>}
+      </div>
 
       <form onSubmit={handleSubmit} className="card p-4 space-y-4 max-w-xl print:hidden">
         <div className="relative">
