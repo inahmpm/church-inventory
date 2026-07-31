@@ -1,4 +1,4 @@
-import { addDoc, collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { logHistory } from './historyLogs';
 import type { EquipmentPullout, NewEquipmentPullout } from '../types';
@@ -26,4 +26,8 @@ export async function createPullout(data: NewEquipmentPullout) {
     action: 'pulled_out',
     details: `Pulled out to ${data.area} on ${new Date(data.pulloutAt).toLocaleString()}`,
   }).catch((err) => console.error('Failed to log history for equipment pullout', err));
+}
+
+export async function deletePullout(id: string) {
+  await deleteDoc(doc(db, 'equipmentPullouts', id));
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
-import { createPullout, subscribePullouts } from '../../lib/equipmentPullouts';
+import { createPullout, deletePullout, subscribePullouts } from '../../lib/equipmentPullouts';
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import type { Equipment, EquipmentPullout } from '../../types';
 
@@ -80,11 +80,29 @@ export default function EquipmentPulloutPage() {
 
   const rows = [...pullouts].sort((a, b) => b.pulloutAt - a.pulloutAt);
 
+  const handleDelete = async (p: EquipmentPullout) => {
+    if (!confirm(`Delete the pullout log for "${p.item}" (${p.area})? This cannot be undone.`)) return;
+    setError('');
+    try {
+      await deletePullout(p.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete pullout log.');
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-slate-800">Equipment Pullout</h1>
+      <div className="flex items-center justify-between print:hidden">
+        <h1 className="text-xl font-semibold text-slate-800">Equipment Pullout</h1>
+        {rows.length > 0 && (
+          <button type="button" className="btn-secondary" onClick={() => window.print()}>
+            Print
+          </button>
+        )}
+      </div>
+      <h1 className="hidden print:block text-xl font-semibold text-slate-800">Equipment Pullout</h1>
 
-      <form onSubmit={handleSubmit} className="card p-4 space-y-4 max-w-xl">
+      <form onSubmit={handleSubmit} className="card p-4 space-y-4 max-w-xl print:hidden">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Equipment Name</label>
           <select
@@ -137,7 +155,7 @@ export default function EquipmentPulloutPage() {
       {rows.length > 0 && (
         <>
           {/* Mobile card list */}
-          <div className="space-y-2 sm:hidden">
+          <div className="space-y-2 sm:hidden print:hidden">
             {rows.map((p) => (
               <div key={p.id} className="card p-3 space-y-1">
                 <div className="flex items-center justify-between">
@@ -149,30 +167,51 @@ export default function EquipmentPulloutPage() {
                   Pulled out: {new Date(p.pulloutAt).toLocaleString()}
                 </div>
                 {p.actor && <div className="text-xs text-slate-400">By: {p.actor}</div>}
+                <div className="pt-1 print:hidden">
+                  <button
+                    type="button"
+                    className="text-sm text-red-600 hover:underline"
+                    onClick={() => handleDelete(p)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
 
           {/* Desktop / tablet table */}
-          <div className="card p-0 overflow-x-auto hidden sm:block">
+          <div className="card p-0 overflow-x-auto hidden sm:block print:block print:shadow-none print:ring-0">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-slate-500 text-left">
                 <tr>
                   <Th>Equipment</Th>
-                  <Th className="hidden md:table-cell">Inventory Code</Th>
+                  <Th className="hidden md:table-cell print:table-cell">Inventory Code</Th>
                   <Th>Area</Th>
                   <Th>Date &amp; Time</Th>
-                  <Th className="hidden lg:table-cell">Logged By</Th>
+                  <Th className="hidden lg:table-cell print:table-cell">Logged By</Th>
+                  <Th className="print:hidden">
+                    <span className="sr-only">Actions</span>
+                  </Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50">
                     <Td>{p.item}</Td>
-                    <Td className="hidden md:table-cell font-mono text-xs">{p.inventoryCode}</Td>
+                    <Td className="hidden md:table-cell print:table-cell font-mono text-xs">{p.inventoryCode}</Td>
                     <Td>{p.area}</Td>
                     <Td className="whitespace-nowrap">{new Date(p.pulloutAt).toLocaleString()}</Td>
-                    <Td className="hidden lg:table-cell">{p.actor ?? '—'}</Td>
+                    <Td className="hidden lg:table-cell print:table-cell">{p.actor ?? '—'}</Td>
+                    <Td className="print:hidden">
+                      <button
+                        type="button"
+                        className="text-sm text-red-600 hover:underline"
+                        onClick={() => handleDelete(p)}
+                      >
+                        Delete
+                      </button>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
