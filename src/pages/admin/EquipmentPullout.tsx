@@ -250,7 +250,7 @@ export default function EquipmentPulloutPage() {
                   <Th className="hidden md:table-cell print:table-cell">Inventory Code</Th>
                   <Th>Area</Th>
                   <Th>Date &amp; Time</Th>
-                  <Th className="hidden lg:table-cell print:table-cell">Logged By</Th>
+                  <Th className="hidden lg:table-cell print:hidden">Logged By</Th>
                   <Th className="print:hidden">
                     <span className="sr-only">Actions</span>
                   </Th>
@@ -263,7 +263,7 @@ export default function EquipmentPulloutPage() {
                     <Td className="hidden md:table-cell print:table-cell font-mono text-xs">{p.inventoryCode}</Td>
                     <Td>{p.area}</Td>
                     <Td className="whitespace-nowrap">{new Date(p.pulloutAt).toLocaleString()}</Td>
-                    <Td className="hidden lg:table-cell print:table-cell">{p.actor ?? '—'}</Td>
+                    <Td className="hidden lg:table-cell print:hidden">{p.actor ?? '—'}</Td>
                     <Td className="print:hidden">
                       <button
                         type="button"
