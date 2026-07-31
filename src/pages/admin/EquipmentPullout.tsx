@@ -4,6 +4,22 @@ import { createPullout, deletePullout, subscribePullouts } from '../../lib/equip
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import type { Equipment, EquipmentPullout } from '../../types';
 
+function IconPrinter() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-6a1 1 0 011-1h16a1 1 0 011 1v6a1 1 0 01-1 1h-2M6 14h12v7H6z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M4 7h16M9 7V4h6v3m-8 0 1 13a1 1 0 001 1h8a1 1 0 001-1l1-13" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function toDatetimeLocal(ts: number): string {
   const d = new Date(ts);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -95,8 +111,15 @@ export default function EquipmentPulloutPage() {
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-xl font-semibold text-slate-800">Equipment Pullout</h1>
         {rows.length > 0 && (
-          <button type="button" className="btn-secondary" onClick={() => window.print()}>
-            Print
+          <button
+            type="button"
+            className="btn-secondary inline-flex items-center gap-1.5"
+            onClick={() => window.print()}
+            title="Print"
+            aria-label="Print"
+          >
+            <IconPrinter />
+            <span className="hidden md:inline">Print</span>
           </button>
         )}
       </div>
@@ -170,10 +193,12 @@ export default function EquipmentPulloutPage() {
                 <div className="pt-1 print:hidden">
                   <button
                     type="button"
-                    className="text-sm text-red-600 hover:underline"
+                    className="text-red-600 hover:text-red-700"
                     onClick={() => handleDelete(p)}
+                    title="Delete"
+                    aria-label="Delete"
                   >
-                    Delete
+                    <IconTrash />
                   </button>
                 </div>
               </div>
@@ -206,10 +231,12 @@ export default function EquipmentPulloutPage() {
                     <Td className="print:hidden">
                       <button
                         type="button"
-                        className="text-sm text-red-600 hover:underline"
+                        className="text-red-600 hover:text-red-700"
                         onClick={() => handleDelete(p)}
+                        title="Delete"
+                        aria-label="Delete"
                       >
-                        Delete
+                        <IconTrash />
                       </button>
                     </Td>
                   </tr>
