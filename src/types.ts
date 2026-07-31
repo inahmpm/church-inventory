@@ -112,6 +112,7 @@ export const HISTORY_LOG_ACTIONS = [
   'removed',
   'handed_out',
   'returned',
+  'pulled_out',
 ] as const;
 export type HistoryLogAction = (typeof HISTORY_LOG_ACTIONS)[number];
 
@@ -126,3 +127,17 @@ export interface HistoryLogEntry {
   actor: string | null; // signed-in admin's email, if known
   timestamp: number;
 }
+
+export interface EquipmentPullout {
+  id: string;
+  ministryId: string;
+  equipmentId: string; // linked inventory item
+  inventoryCode: string;
+  item: string;
+  area: string; // free-text: where the equipment is being pulled out to
+  pulloutAt: number; // date/time of the pullout, chosen by the user
+  actor: string | null; // signed-in admin's email, if known
+  createdAt: number;
+}
+
+export type NewEquipmentPullout = Omit<EquipmentPullout, 'id' | 'actor' | 'createdAt'>;
