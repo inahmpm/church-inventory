@@ -45,6 +45,7 @@ export default function AdminLayout() {
   }[] = [
     { items: [{ to: '/admin', label: 'Dashboard', end: true }] },
     { items: [{ to: '/admin/inventory', label: 'Equipment Inventory' }] },
+    { items: [{ to: '/admin/pullout', label: 'Equipment Pullout' }] },
     {
       label: 'Equipment Borrowing',
       items: [

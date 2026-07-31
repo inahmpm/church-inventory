@@ -95,6 +95,14 @@ service cloud.firestore {
       allow read, update, delete: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
     }
 
+    // Equipment pullouts: a log of inventory items pulled out for use in a
+    // specific area, scoped per ministry like equipment/historyLogs.
+    match /equipmentPullouts/{pulloutId} {
+      allow read: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
+      allow create: if isSuperAdmin() || sameMinistry(request.resource.data.ministryId);
+      allow update, delete: if false;
+    }
+
     // History logs: an immutable audit trail of every inventory movement
     // (created/updated/deleted/borrowed/removed/handed_out/returned), scoped
     // per ministry. Entries can never be edited or removed once written.

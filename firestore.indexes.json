@@ -43,6 +43,14 @@
       ]
     },
     {
+      "collectionGroup": "equipmentPullouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ministryId", "order": "ASCENDING" },
+        { "fieldPath": "pulloutAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "historyLogs",
       "queryScope": "COLLECTION",
       "fields": [
