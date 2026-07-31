@@ -1,4 +1,5 @@
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { logHistory } from './historyLogs';
 import type { EquipmentPullout, NewEquipmentPullout } from '../types';
