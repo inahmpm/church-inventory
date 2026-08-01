@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { subscribeBorrowRequests } from '../../lib/borrowRequests';
+import { HISTORY_LOG_ACTION_COLORS, HISTORY_LOG_ACTION_LABELS } from '../../lib/historyLogs';
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import type { BorrowRequest } from '../../types';
 
@@ -10,10 +11,12 @@ export default function BorrowRequestHistory() {
 
   useEffect(() => {
     if (!ministryId) return;
-    return subscribeBorrowRequests(['returned'], setRequests, ministryId);
+    return subscribeBorrowRequests(['returned', 'denied'], setRequests, ministryId);
   }, [ministryId]);
 
-  const rows = [...requests].sort((a, b) => (b.returnedAt ?? 0) - (a.returnedAt ?? 0));
+  const rows = [...requests].sort(
+    (a, b) => (b.returnedAt ?? b.deniedAt ?? 0) - (a.returnedAt ?? a.deniedAt ?? 0),
+  );
 
   return (
     <div className="space-y-4">
@@ -31,14 +34,18 @@ export default function BorrowRequestHistory() {
               <div key={r.id} className="card p-3 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-800">{r.name}</span>
-                  <span className="text-xs text-slate-400">{r.items.length} item(s)</span>
+                  <StatusBadge status={r.status} />
                 </div>
                 <div className="text-xs text-slate-500">{r.ministry} · {r.venue}</div>
                 <div className="text-xs text-slate-500 truncate">{r.contactNo} · {r.email}</div>
                 <div className="text-xs text-slate-500 truncate">Requested: {r.equipmentRequested}</div>
+                <div className="text-xs text-slate-400">{r.items.length} item(s)</div>
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>Submitted: {new Date(r.submittedAt).toLocaleString()}</span>
-                  <span>Returned: {r.returnedAt ? new Date(r.returnedAt).toLocaleString() : '—'}</span>
+                  <span>
+                    {r.status === 'denied' ? 'Denied' : 'Returned'}:{' '}
+                    {(r.returnedAt ?? r.deniedAt) ? new Date((r.returnedAt ?? r.deniedAt) as number).toLocaleString() : '—'}
+                  </span>
                 </div>
               </div>
             ))}
@@ -56,7 +63,8 @@ export default function BorrowRequestHistory() {
                   <Th className="hidden md:table-cell">Venue</Th>
                   <Th className="hidden xl:table-cell">Requested Equipment</Th>
                   <Th>Items</Th>
-                  <Th>Returned</Th>
+                  <Th>Status</Th>
+                  <Th>Returned / Denied</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -74,8 +82,11 @@ export default function BorrowRequestHistory() {
                       {r.equipmentRequested}
                     </Td>
                     <Td>{r.items.length}</Td>
+                    <Td>
+                      <StatusBadge status={r.status} />
+                    </Td>
                     <Td className="whitespace-nowrap">
-                      {r.returnedAt ? new Date(r.returnedAt).toLocaleString() : '—'}
+                      {(r.returnedAt ?? r.deniedAt) ? new Date((r.returnedAt ?? r.deniedAt) as number).toLocaleString() : '—'}
                     </Td>
                   </tr>
                 ))}
@@ -86,6 +97,12 @@ export default function BorrowRequestHistory() {
       )}
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: BorrowRequest['status'] }) {
+  const label = status === 'denied' ? HISTORY_LOG_ACTION_LABELS.denied : HISTORY_LOG_ACTION_LABELS.returned;
+  const color = status === 'denied' ? HISTORY_LOG_ACTION_COLORS.denied : HISTORY_LOG_ACTION_COLORS.returned;
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>{label}</span>;
 }
 
 function Th({ children, className = '' }: { children?: React.ReactNode; className?: string }) {
