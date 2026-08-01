@@ -57,6 +57,12 @@ service cloud.firestore {
       allow create, update: if isMinistryAdmin()
         && request.resource.data.ministryId == myMinistry()
         && request.resource.data.role != 'super-admin';
+      // Self-service: a user completing the forced first-login password
+      // change may clear their own mustChangePassword flag and nothing else
+      // (role/ministryId/active stay locked to admin-only writes above).
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
+        && request.resource.data.mustChangePassword == false;
     }
 
     // Equipment inventory: scoped to the caller's own ministry; super-admins
