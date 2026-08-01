@@ -60,3 +60,7 @@ export async function setUserActive(uid: string, active: boolean) {
 export async function setUserRole(uid: string, role: UserRole) {
   await updateDoc(doc(db, 'users', uid), { role });
 }
+
+export async function setUserName(uid: string, name: string) {
+  await updateDoc(doc(db, 'users', uid), { name });
+}

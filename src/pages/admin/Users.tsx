@@ -5,6 +5,7 @@ import {
   createUserInMinistry,
   sendUserPasswordReset,
   setUserActive,
+  setUserName,
   setUserRole,
   subscribeMinistryUsers,
 } from '../../lib/users';
@@ -25,6 +26,7 @@ export default function Users() {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
   const [editingUid, setEditingUid] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('member');
   const [savingEdit, setSavingEdit] = useState(false);
   const [resettingUid, setResettingUid] = useState<string | null>(null);
@@ -77,6 +79,7 @@ export default function Users() {
   function startEdit(u: AppUser) {
     setError(null);
     setEditingUid(u.uid);
+    setEditName(u.name ?? '');
     setEditRole(u.role);
   }
 
@@ -86,8 +89,14 @@ export default function Users() {
 
   async function handleSaveEdit(uid: string) {
     setError(null);
+    const trimmedName = editName.trim();
+    if (!trimmedName) {
+      setError('Name is required.');
+      return;
+    }
     setSavingEdit(true);
     try {
+      await setUserName(uid, trimmedName);
       await setUserRole(uid, editRole);
       setEditingUid(null);
     } catch (err) {
@@ -180,9 +189,18 @@ export default function Users() {
           editingUid === u.uid ? (
             <div key={u.uid} className="card flex flex-col gap-3 sm:flex-row sm:items-end">
               <div>
-                <p className="font-medium text-slate-800">{u.name}</p>
                 <p className="text-sm text-slate-500">{u.email}</p>
               </div>
+              <label className="block flex-1">
+                <span className="block text-sm font-medium text-slate-700 mb-1">Name</span>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Jane Doe"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+              </label>
               <label className="block">
                 <span className="block text-sm font-medium text-slate-700 mb-1">Role</span>
                 <select
@@ -211,7 +229,7 @@ export default function Users() {
           ) : (
             <div key={u.uid} className="card flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium text-slate-800 break-words">{u.name}</p>
+                <p className="font-medium text-slate-800 break-words">{u.name || u.email}</p>
                 <p className="text-sm text-slate-500 break-words">{u.email}</p>
                 <p className="text-sm text-slate-500">
                   {ministry?.department && <>{ministry.department} &middot; </>}
