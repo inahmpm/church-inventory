@@ -1,7 +1,7 @@
 import { deleteApp, getApps, initializeApp } from 'firebase/app';
-import { createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { collection, doc, onSnapshot, orderBy, query, setDoc, updateDoc, where } from 'firebase/firestore';
-import { db, firebaseConfig } from '../firebase';
+import { auth, db, firebaseConfig } from '../firebase';
 import type { AppUser, UserRole } from '../types';
 
 const usersCol = collection(db, 'users');
@@ -20,6 +20,7 @@ export function subscribeMinistryUsers(ministryId: string, cb: (users: AppUser[]
  * throwaway secondary app instance instead of the shared `auth` instance.
  */
 export async function createUserInMinistry(
+  name: string,
   email: string,
   tempPassword: string,
   ministryId: string,
@@ -32,6 +33,7 @@ export async function createUserInMinistry(
     const credential = await createUserWithEmailAndPassword(secondaryAuth, email, tempPassword);
     const uid = credential.user.uid;
     await setDoc(doc(db, 'users', uid), {
+      name,
       email,
       ministryId,
       role,
@@ -45,6 +47,10 @@ export async function createUserInMinistry(
     const app = getApps().find((a) => a.name === secondaryName);
     if (app) await deleteApp(app);
   }
+}
+
+export async function sendUserPasswordReset(email: string) {
+  await sendPasswordResetEmail(auth, email);
 }
 
 export async function setUserActive(uid: string, active: boolean) {

@@ -1,7 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { getMinistry } from '../../lib/ministries';
 import { useCurrentUser } from '../../lib/useCurrentUser';
-import { createUserInMinistry, setUserActive, setUserRole, subscribeMinistryUsers } from '../../lib/users';
+import {
+  createUserInMinistry,
+  sendUserPasswordReset,
+  setUserActive,
+  setUserRole,
+  subscribeMinistryUsers,
+} from '../../lib/users';
 import type { AppUser, Ministry, UserRole } from '../../types';
 
 function generateTempPassword() {
@@ -12,6 +18,7 @@ export default function Users() {
   const { profile } = useCurrentUser();
   const [ministry, setMinistry] = useState<Ministry | null>(null);
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('member');
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +27,8 @@ export default function Users() {
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<UserRole>('member');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [resettingUid, setResettingUid] = useState<string | null>(null);
+  const [resetSentUid, setResetSentUid] = useState<string | null>(null);
 
   const ministryId = profile?.ministryId;
 
@@ -38,13 +47,15 @@ export default function Users() {
     setError(null);
     setCreated(null);
     if (!ministryId) return;
+    const trimmedName = name.trim();
     const trimmedEmail = email.trim();
-    if (!trimmedEmail) return;
+    if (!trimmedName || !trimmedEmail) return;
     setCreating(true);
     try {
       const tempPassword = generateTempPassword();
-      await createUserInMinistry(trimmedEmail, tempPassword, ministryId, role);
+      await createUserInMinistry(trimmedName, trimmedEmail, tempPassword, ministryId, role);
       setCreated({ email: trimmedEmail, tempPassword });
+      setName('');
       setEmail('');
       setRole('member');
     } catch (err) {
@@ -86,6 +97,20 @@ export default function Users() {
     }
   }
 
+  async function handleResetPassword(u: AppUser) {
+    setError(null);
+    setResetSentUid(null);
+    setResettingUid(u.uid);
+    try {
+      await sendUserPasswordReset(u.email);
+      setResetSentUid(u.uid);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send password reset email.');
+    } finally {
+      setResettingUid(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -118,6 +143,16 @@ export default function Users() {
 
       <form onSubmit={handleCreate} className="card flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="block flex-1">
+          <span className="block text-sm font-medium text-slate-700 mb-1">Name</span>
+          <input
+            type="text"
+            className="input"
+            placeholder="Jane Doe"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label className="block flex-1">
           <span className="block text-sm font-medium text-slate-700 mb-1">Email</span>
           <input
             type="email"
@@ -145,7 +180,8 @@ export default function Users() {
           editingUid === u.uid ? (
             <div key={u.uid} className="card flex flex-col gap-3 sm:flex-row sm:items-end">
               <div>
-                <p className="font-medium text-slate-800">{u.email}</p>
+                <p className="font-medium text-slate-800">{u.name}</p>
+                <p className="text-sm text-slate-500">{u.email}</p>
               </div>
               <label className="block">
                 <span className="block text-sm font-medium text-slate-700 mb-1">Role</span>
@@ -175,15 +211,26 @@ export default function Users() {
           ) : (
             <div key={u.uid} className="card flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-medium text-slate-800 break-words">{u.email}</p>
+                <p className="font-medium text-slate-800 break-words">{u.name}</p>
+                <p className="text-sm text-slate-500 break-words">{u.email}</p>
                 <p className="text-sm text-slate-500">
                   {ministry?.department && <>{ministry.department} &middot; </>}
                   {u.role} &middot; {u.active ? 'Active' : 'Disabled'}
                 </p>
+                {resetSentUid === u.uid && (
+                  <p className="text-sm text-green-700">Password reset email sent.</p>
+                )}
               </div>
               <div className="flex items-center gap-4 shrink-0">
                 <button className="text-sm text-primary-600 hover:underline" onClick={() => startEdit(u)}>
                   Edit
+                </button>
+                <button
+                  className="text-sm text-primary-600 hover:underline disabled:opacity-50"
+                  disabled={resettingUid === u.uid}
+                  onClick={() => handleResetPassword(u)}
+                >
+                  {resettingUid === u.uid ? 'Sending...' : 'Reset Password'}
                 </button>
                 <button
                   className={`text-sm hover:underline ${u.active ? 'text-red-600' : 'text-primary-600'}`}
