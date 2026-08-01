@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Navigate } from 'react-router-dom';
 import {
   addSubcategory,
   createCategory,
@@ -12,6 +13,10 @@ import type { Category } from '../../types';
 export default function Categories() {
   const { profile } = useCurrentUser();
   const ministryId = profile?.ministryId;
+
+  if (profile && profile.role !== 'ministry-admin' && profile.role !== 'super-admin') {
+    return <Navigate to="/admin" replace />;
+  }
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [subcategoryDrafts, setSubcategoryDrafts] = useState<Record<string, string>>({});

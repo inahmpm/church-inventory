@@ -38,6 +38,7 @@ export default function AdminLayout() {
 
   const canManageUsers = profile?.role === 'ministry-admin' || profile?.role === 'super-admin';
   const canManageMinistries = profile?.role === 'super-admin';
+  const canManageCategories = profile?.role === 'ministry-admin' || profile?.role === 'super-admin';
 
   const navGroups: {
     label?: string;
@@ -64,7 +65,7 @@ export default function AdminLayout() {
       items: [
         ...(canManageUsers ? [{ to: '/admin/users', label: 'Users' }] : []),
         ...(canManageMinistries ? [{ to: '/admin/ministries', label: 'Ministries' }] : []),
-        { to: '/admin/categories', label: 'Equipment Categories' },
+        ...(canManageCategories ? [{ to: '/admin/categories', label: 'Equipment Categories' }] : []),
       ],
     },
     { items: [{ to: '/admin/logs', label: 'History Logs' }] },

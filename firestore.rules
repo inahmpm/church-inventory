@@ -72,10 +72,16 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || sameMinistry(request.resource.data.ministryId);
     }
 
-    // Categories/subcategories used to classify equipment: scoped per ministry.
+    // Categories/subcategories used to classify equipment: scoped per
+    // ministry. Any member can read them (needed to pick a category on the
+    // Inventory page), but only that ministry's admins (or a super-admin)
+    // can manage them via the Categories settings page.
     match /categories/{categoryId} {
-      allow read, update, delete: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
-      allow create: if isSuperAdmin() || sameMinistry(request.resource.data.ministryId);
+      allow read: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
+      allow update, delete: if isSuperAdmin() ||
+        (isMinistryAdmin() && sameMinistry(resource.data.ministryId));
+      allow create: if isSuperAdmin() ||
+        (isMinistryAdmin() && sameMinistry(request.resource.data.ministryId));
     }
 
     // Departments: a shared list used to categorize ministries (Worship,
