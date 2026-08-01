@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -58,6 +59,7 @@ export default function ChangePassword() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -90,6 +92,7 @@ export default function ChangePassword() {
         }
       }
       await updateDoc(doc(db, 'users', user.uid), { mustChangePassword: false });
+      navigate('/admin', { replace: true });
     } catch (err) {
       if (err instanceof FirebaseError && err.code === 'auth/invalid-credential') {
         setError('Current password is incorrect.');
