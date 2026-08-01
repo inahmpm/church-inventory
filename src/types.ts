@@ -34,6 +34,7 @@ export interface Department {
 
 export interface AppUser {
   uid: string; // Firestore doc id, matches Firebase Auth uid
+  name: string;
   email: string;
   ministryId: string;
   role: UserRole;
