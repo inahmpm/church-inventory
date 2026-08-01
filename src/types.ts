@@ -70,13 +70,22 @@ export interface Equipment {
   // Internal borrow-tracking fields, not part of the visible inventory table:
   isBorrowed: boolean;
   activeBorrowRequestId: string | null;
+  // Internal pull-out tracking fields, mirrors the borrow-tracking fields above:
+  pulloutStatus: PulloutItemStatus | null; // 'for_pullout' | 'pulled_out' | null
+  activePulloutRequestId: string | null;
   createdAt: number;
   updatedAt: number;
 }
 
 export type NewEquipment = Omit<
   Equipment,
-  'id' | 'isBorrowed' | 'activeBorrowRequestId' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'isBorrowed'
+  | 'activeBorrowRequestId'
+  | 'pulloutStatus'
+  | 'activePulloutRequestId'
+  | 'createdAt'
+  | 'updatedAt'
 >;
 
 export type BorrowRequestStatus = 'pending' | 'borrowed' | 'returned' | 'denied';
@@ -115,6 +124,12 @@ export const HISTORY_LOG_ACTIONS = [
   'returned',
   'pulled_out',
   'denied',
+  'pullout_scheduled',
+  'pullout_removed',
+  'pullout_scanned_out',
+  'pullout_scanned_in',
+  'pullout_missing',
+  'pullout_found',
 ] as const;
 export type HistoryLogAction = (typeof HISTORY_LOG_ACTIONS)[number];
 
@@ -143,3 +158,50 @@ export interface EquipmentPullout {
 }
 
 export type NewEquipmentPullout = Omit<EquipmentPullout, 'id' | 'actor' | 'createdAt'>;
+
+// ---------------------------------------------------------------------------
+// Equipment Pull-out Module (request/items lifecycle) — supersedes the flat
+// `EquipmentPullout` log above for new pull-outs. That collection stays in
+// place, read-only, as a historical record predating this module.
+// ---------------------------------------------------------------------------
+
+export const PULLOUT_REQUEST_STATUSES = ['draft', 'scheduled', 'in_progress', 'closed'] as const;
+export type PulloutRequestStatus = (typeof PULLOUT_REQUEST_STATUSES)[number];
+
+export const PULLOUT_ITEM_STATUSES = ['for_pullout', 'pulled_out', 'returned', 'missing'] as const;
+export type PulloutItemStatus = (typeof PULLOUT_ITEM_STATUSES)[number];
+
+export interface PulloutRequest {
+  id: string;
+  ministryId: string;
+  purpose: string;
+  pulloutAt: number; // scheduled date & time of pull-out
+  returnDueAt: number; // scheduled date & time of return
+  destination: string;
+  requestorName: string;
+  requestorEmail: string | null;
+  status: PulloutRequestStatus; // derived rollup, never set directly by the UI
+  itemCount: number; // denormalized count for list views
+  createdBy: string | null; // requesting user's email
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type NewPulloutRequest = Omit<
+  PulloutRequest,
+  'id' | 'status' | 'itemCount' | 'createdBy' | 'createdAt' | 'updatedAt'
+>;
+
+export interface PulloutItem {
+  id: string;
+  equipmentId: string; // FK -> equipment/{id}
+  inventoryCode: string;
+  item: string;
+  category: string;
+  itemStatus: PulloutItemStatus;
+  scannedOutAt: number | null;
+  scannedOutBy: string | null; // Ministry Admin's email
+  scannedInAt: number | null;
+  scannedInBy: string | null; // Ministry Admin's email
+  conditionNoteOnReturn: string | null;
+}
