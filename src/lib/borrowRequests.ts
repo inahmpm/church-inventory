@@ -46,6 +46,7 @@ export async function submitBorrowRequest(input: PublicBorrowInput, notification
     submittedAtServer: serverTimestamp(),
     fulfilledAt: null,
     returnedAt: null,
+    deniedAt: null,
   });
   const requestSummary = `<ul>
        <li><strong>Contact No.:</strong> ${input.contactNo}</li>
@@ -208,6 +209,58 @@ export async function finalizeRequest(requestId: string) {
         to_name: `${req.name} (${req.ministry})`,
         items_list: itemsListHtml(req.items),
       }),
+    );
+  }
+  await Promise.all(mails);
+}
+
+export async function rejectRequest(requestId: string, reason?: string) {
+  const reqRef = doc(db, 'borrowRequests', requestId);
+  const req = await runTransaction(db, async (tx) => {
+    const reqSnap = await tx.get(reqRef);
+    const req = reqSnap.data() as BorrowRequest | undefined;
+    if (!req) throw new Error('Borrow request not found');
+    if (req.fulfilledAt) throw new Error('Cannot reject a request that has already been handed out');
+    for (const item of req.items) {
+      tx.update(doc(db, 'equipment', item.equipmentId), {
+        isBorrowed: false,
+        activeBorrowRequestId: null,
+        updatedAt: Date.now(),
+      });
+    }
+    tx.update(reqRef, { status: 'denied', deniedAt: Date.now() });
+    return req;
+  });
+  await Promise.all(
+    req.items.map((item) =>
+      logHistory({
+        ministryId: req.ministryId,
+        equipmentId: item.equipmentId,
+        inventoryCode: item.inventoryCode,
+        item: item.item,
+        action: 'denied',
+        details: `Borrow request from ${req.name} (${req.ministry}) was rejected${reason ? `: ${reason}` : ''}`,
+      }),
+    ),
+  );
+  const reasonHtml = reason ? `<p><strong>Reason:</strong> ${reason}</p>` : '';
+  const ministry = await getMinistry(req.ministryId);
+  const mails = [
+    sendMail(
+      req.ministryId,
+      req.email,
+      'Your borrow request was rejected',
+      `<p>Hi ${req.name}, your equipment borrow request has been rejected.</p>${reasonHtml}`,
+    ),
+  ];
+  if (ministry?.notificationEmail) {
+    mails.push(
+      sendMail(
+        req.ministryId,
+        ministry.notificationEmail,
+        `Borrow request from ${req.name} was rejected`,
+        `<p>The borrow request from <strong>${req.name}</strong> (${req.ministry}) was rejected.</p>${reasonHtml}`,
+      ),
     );
   }
   await Promise.all(mails);

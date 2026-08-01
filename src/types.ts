@@ -79,7 +79,7 @@ export type NewEquipment = Omit<
   'id' | 'isBorrowed' | 'activeBorrowRequestId' | 'createdAt' | 'updatedAt'
 >;
 
-export type BorrowRequestStatus = 'pending' | 'borrowed' | 'returned';
+export type BorrowRequestStatus = 'pending' | 'borrowed' | 'returned' | 'denied';
 
 export interface BorrowedItem {
   equipmentId: string;
@@ -102,6 +102,7 @@ export interface BorrowRequest {
   submittedAt: number; // timestamp of form submission
   fulfilledAt: number | null; // timestamp scanning was completed / items handed out
   returnedAt: number | null; // timestamp items were returned
+  deniedAt: number | null; // timestamp the request was rejected
 }
 
 export const HISTORY_LOG_ACTIONS = [
@@ -113,6 +114,7 @@ export const HISTORY_LOG_ACTIONS = [
   'handed_out',
   'returned',
   'pulled_out',
+  'denied',
 ] as const;
 export type HistoryLogAction = (typeof HISTORY_LOG_ACTIONS)[number];
 

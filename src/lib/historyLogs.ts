@@ -13,6 +13,7 @@ export const HISTORY_LOG_ACTION_LABELS: Record<HistoryLogAction, string> = {
   handed_out: 'Handed out',
   returned: 'Returned',
   pulled_out: 'Pulled out',
+  denied: 'Denied',
 };
 
 export const HISTORY_LOG_ACTION_COLORS: Record<HistoryLogAction, string> = {
@@ -24,6 +25,7 @@ export const HISTORY_LOG_ACTION_COLORS: Record<HistoryLogAction, string> = {
   handed_out: 'bg-sky-100 text-sky-700',
   returned: 'bg-lime-100 text-lime-700',
   pulled_out: 'bg-purple-100 text-purple-700',
+  denied: 'bg-red-100 text-red-700',
 };
 
 export function logHistory(entry: {

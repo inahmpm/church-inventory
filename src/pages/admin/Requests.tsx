@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   finalizeRequest,
+  rejectRequest,
   removeItemFromRequest,
   scanEquipmentIntoRequest,
   subscribeBorrowRequests,
@@ -14,6 +15,7 @@ export default function Requests() {
   const ministryId = profile?.ministryId;
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
   const [open, setOpen] = useState<BorrowRequest | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ministryId) return;
@@ -27,6 +29,19 @@ export default function Requests() {
     if (fresh) setOpen(fresh);
     else setOpen(null);
   }, [requests, open?.id]);
+
+  async function handleReject(r: BorrowRequest) {
+    if (!confirm(`Reject the borrow request from ${r.name}? Any scanned items will be released.`)) return;
+    const reason = prompt('Reason for rejection (optional):') ?? undefined;
+    setRejectingId(r.id);
+    try {
+      await rejectRequest(r.id, reason || undefined);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reject request.');
+    } finally {
+      setRejectingId(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -44,9 +59,18 @@ export default function Requests() {
             <div className="text-xs text-slate-500 truncate">{r.contactNo} · {r.email}</div>
             <div className="text-xs text-slate-500 truncate">Requested: {r.equipmentRequested}</div>
             <div className="text-xs text-slate-400">{new Date(r.submittedAt).toLocaleString()}</div>
-            <button className="text-primary-600 hover:underline text-xs pt-1" onClick={() => setOpen(r)}>
-              {r.items.length ? 'Manage scan' : 'Scan equipment'}
-            </button>
+            <div className="flex items-center gap-3 pt-1">
+              <button className="text-primary-600 hover:underline text-xs" onClick={() => setOpen(r)}>
+                {r.items.length ? 'Manage scan' : 'Scan equipment'}
+              </button>
+              <button
+                className="text-red-600 hover:underline text-xs disabled:opacity-50"
+                disabled={rejectingId === r.id || !!r.fulfilledAt}
+                onClick={() => handleReject(r)}
+              >
+                {rejectingId === r.id ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
           </div>
         ))}
         {requests.length === 0 && <div className="text-center text-slate-400 py-8">No pending or in-progress requests.</div>}
@@ -83,9 +107,18 @@ export default function Requests() {
                 </Td>
                 <Td>{r.items.length}</Td>
                 <Td>
-                  <button className="text-primary-600 hover:underline text-xs" onClick={() => setOpen(r)}>
-                    {r.items.length ? 'Manage scan' : 'Scan equipment'}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button className="text-primary-600 hover:underline text-xs" onClick={() => setOpen(r)}>
+                      {r.items.length ? 'Manage scan' : 'Scan equipment'}
+                    </button>
+                    <button
+                      className="text-red-600 hover:underline text-xs disabled:opacity-50"
+                      disabled={rejectingId === r.id || !!r.fulfilledAt}
+                      onClick={() => handleReject(r)}
+                    >
+                      {rejectingId === r.id ? 'Rejecting...' : 'Reject'}
+                    </button>
+                  </div>
                 </Td>
               </tr>
             ))}
