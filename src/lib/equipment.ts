@@ -62,6 +62,8 @@ export async function createEquipment(data: NewEquipment) {
     ...data,
     isBorrowed: false,
     activeBorrowRequestId: null,
+    pulloutStatus: null,
+    activePulloutRequestId: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   });

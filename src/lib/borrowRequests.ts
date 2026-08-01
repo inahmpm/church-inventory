@@ -115,6 +115,9 @@ export async function scanEquipmentIntoRequest(requestId: string, ministryId: st
       throw new Error(`"${equip.item}" (${inventoryCode}) is issued to ${equip.assignedTo || 'someone'} and cannot be borrowed`);
     }
     if (equip.isBorrowed) throw new Error(`"${equip.item}" (${inventoryCode}) is already borrowed`);
+    if (equip.pulloutStatus) {
+      throw new Error(`"${equip.item}" (${inventoryCode}) is scheduled for pull-out and cannot be borrowed`);
+    }
 
     const reqRef = doc(db, 'borrowRequests', requestId);
     const reqSnap = await tx.get(reqRef);

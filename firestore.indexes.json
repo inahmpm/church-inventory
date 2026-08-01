@@ -51,6 +51,23 @@
       ]
     },
     {
+      "collectionGroup": "pulloutRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ministryId", "order": "ASCENDING" },
+        { "fieldPath": "pulloutAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pulloutRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ministryId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "pulloutAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "historyLogs",
       "queryScope": "COLLECTION",
       "fields": [

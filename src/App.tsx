@@ -9,7 +9,10 @@ import Requests from './pages/admin/Requests';
 import ActiveBorrows from './pages/admin/ActiveBorrows';
 import ReturnHistory from './pages/admin/ReturnHistory';
 import BorrowRequestHistory from './pages/admin/BorrowRequestHistory';
-import EquipmentPullout from './pages/admin/EquipmentPullout';
+import EquipmentPulloutLegacy from './pages/admin/EquipmentPullout';
+import PulloutRequests from './pages/admin/PulloutRequests';
+import PulloutRequestNew from './pages/admin/PulloutRequestNew';
+import PulloutRequestDetail from './pages/admin/PulloutRequestDetail';
 import HistoryLogs from './pages/admin/HistoryLogs';
 import Categories from './pages/admin/Categories';
 import Report from './pages/admin/Report';
@@ -32,7 +35,10 @@ export default function App() {
           <Route path="active" element={<ActiveBorrows />} />
           <Route path="history" element={<ReturnHistory />} />
           <Route path="request-history" element={<BorrowRequestHistory />} />
-          <Route path="pullout" element={<EquipmentPullout />} />
+          <Route path="pullout" element={<PulloutRequests />} />
+          <Route path="pullout/new" element={<PulloutRequestNew />} />
+          <Route path="pullout/legacy" element={<EquipmentPulloutLegacy />} />
+          <Route path="pullout/:id" element={<PulloutRequestDetail />} />
           <Route path="logs" element={<HistoryLogs />} />
           <Route path="categories" element={<Categories />} />
           <Route path="report" element={<Report />} />

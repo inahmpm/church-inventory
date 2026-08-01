@@ -95,12 +95,33 @@ service cloud.firestore {
       allow read, update, delete: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
     }
 
-    // Equipment pullouts: a log of inventory items pulled out for use in a
-    // specific area, scoped per ministry like equipment/historyLogs.
+    // Equipment pullouts: a legacy, immutable log of inventory items pulled
+    // out for use in a specific area, scoped per ministry like
+    // equipment/historyLogs. Superseded by pulloutRequests below for new
+    // pull-outs; left read-only in place as a historical record.
     match /equipmentPullouts/{pulloutId} {
       allow read, delete: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
       allow create: if isSuperAdmin() || sameMinistry(request.resource.data.ministryId);
       allow update: if false;
+    }
+
+    // Pull-out requests: a stateful request/items lifecycle (draft ->
+    // scheduled -> in_progress -> closed) for scheduled, two-way physical
+    // movement of equipment, verified by QR scan at pull-out and return.
+    // Any active member of the ministry can create a request and attach
+    // items; Ministry Admins/super-admins perform the scan verification
+    // (which also updates request/item docs), so update is scoped the same
+    // as borrowRequests rather than restricted to admins only.
+    match /pulloutRequests/{requestId} {
+      allow create: if sameMinistry(request.resource.data.ministryId);
+      allow read, update: if isSuperAdmin() || sameMinistry(resource.data.ministryId);
+      allow delete: if (isSuperAdmin() || sameMinistry(resource.data.ministryId))
+        && resource.data.status == 'draft';
+
+      match /items/{itemId} {
+        allow read, create, update, delete: if isSuperAdmin() ||
+          sameMinistry(get(/databases/$(database)/documents/pulloutRequests/$(requestId)).data.ministryId);
+      }
     }
 
     // History logs: an immutable audit trail of every inventory movement

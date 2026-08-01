@@ -117,6 +117,13 @@ function availabilityLabel(e: Equipment) {
       <span className="text-sky-600 font-medium">Issued{e.assignedTo ? ` to ${e.assignedTo}` : ''}</span>
     );
   }
+  if (e.pulloutStatus) {
+    return (
+      <span className="text-purple-600 font-medium">
+        {e.pulloutStatus === 'pulled_out' ? 'Pulled out' : 'Scheduled for pull-out'}
+      </span>
+    );
+  }
   return e.isBorrowed ? (
     <span className="text-amber-600 font-medium">Borrowed</span>
   ) : (

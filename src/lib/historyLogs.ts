@@ -14,6 +14,12 @@ export const HISTORY_LOG_ACTION_LABELS: Record<HistoryLogAction, string> = {
   returned: 'Returned',
   pulled_out: 'Pulled out',
   denied: 'Denied',
+  pullout_scheduled: 'Scheduled for pull-out',
+  pullout_removed: 'Removed from pull-out request',
+  pullout_scanned_out: 'Scanned out',
+  pullout_scanned_in: 'Scanned in (returned)',
+  pullout_missing: 'Reported missing',
+  pullout_found: 'Missing item found',
 };
 
 export const HISTORY_LOG_ACTION_COLORS: Record<HistoryLogAction, string> = {
@@ -26,6 +32,12 @@ export const HISTORY_LOG_ACTION_COLORS: Record<HistoryLogAction, string> = {
   returned: 'bg-lime-100 text-lime-700',
   pulled_out: 'bg-purple-100 text-purple-700',
   denied: 'bg-red-100 text-red-700',
+  pullout_scheduled: 'bg-purple-100 text-purple-700',
+  pullout_removed: 'bg-orange-100 text-orange-700',
+  pullout_scanned_out: 'bg-amber-100 text-amber-700',
+  pullout_scanned_in: 'bg-lime-100 text-lime-700',
+  pullout_missing: 'bg-red-100 text-red-700',
+  pullout_found: 'bg-green-100 text-green-700',
 };
 
 export function logHistory(entry: {
