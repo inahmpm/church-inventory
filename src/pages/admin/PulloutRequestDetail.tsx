@@ -72,15 +72,22 @@ export default function PulloutRequestDetail() {
     [sortedEquipment],
   );
 
+  const matchesSearchTerm = (eq: Equipment, term: string) =>
+    eq.item.toLowerCase().includes(term) || eq.inventoryCode.toLowerCase().includes(term);
+
   const matchingEquipment = useMemo(() => {
     const pendingIds = new Set(pending.map((eq) => eq.id));
     const term = equipmentSearch.trim().toLowerCase();
     const pool = availableEquipment.filter((eq) => !pendingIds.has(eq.id));
     if (!term) return pool;
-    return pool.filter(
-      (eq) => eq.item.toLowerCase().includes(term) || eq.inventoryCode.toLowerCase().includes(term),
-    );
+    return pool.filter((eq) => matchesSearchTerm(eq, term));
   }, [availableEquipment, equipmentSearch, pending]);
+
+  const unavailableMatchCount = useMemo(() => {
+    const term = equipmentSearch.trim().toLowerCase();
+    if (!term) return 0;
+    return sortedEquipment.filter((eq) => (eq.isBorrowed || eq.pulloutStatus) && matchesSearchTerm(eq, term)).length;
+  }, [sortedEquipment, equipmentSearch]);
 
   const canEditItems = request?.status === 'draft' || request?.status === 'scheduled';
 
@@ -179,7 +186,11 @@ export default function PulloutRequestDetail() {
             {equipmentDropdownOpen && (
               <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                 {matchingEquipment.length === 0 && (
-                  <div className="px-3 py-2 text-sm text-slate-400">No matching equipment available.</div>
+                  <div className="px-3 py-2 text-sm text-slate-400">
+                    {unavailableMatchCount > 0
+                      ? `${unavailableMatchCount} matching item${unavailableMatchCount === 1 ? '' : 's'} found, but already borrowed or attached to a pull-out request.`
+                      : 'No matching equipment available.'}
+                  </div>
                 )}
                 {matchingEquipment.map((eq) => (
                   <button
