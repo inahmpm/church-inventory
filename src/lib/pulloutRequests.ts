@@ -60,7 +60,7 @@ export function subscribePulloutRequest(requestId: string, cb: (req: PulloutRequ
 }
 
 export function subscribePulloutItems(requestId: string, cb: (items: PulloutItem[]) => void) {
-  const q = query(itemsCol(requestId), orderBy('item'));
+  const q = query(itemsCol(requestId), orderBy('category'), orderBy('item'));
   return onSnapshot(q, (snap) => {
     cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PulloutItem, 'id'>) })));
   });
@@ -103,6 +103,7 @@ export async function attachItems(requestId: string, ministryId: string, equipme
         inventoryCode: equip.inventoryCode,
         item: equip.item,
         category: equip.category,
+        subcategory: equip.subcategory,
         itemStatus: 'for_pullout',
         scannedOutAt: null,
         scannedOutBy: null,

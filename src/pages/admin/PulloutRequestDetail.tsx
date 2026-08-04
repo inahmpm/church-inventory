@@ -63,7 +63,13 @@ export default function PulloutRequestDetail() {
   }, [ministryId]);
 
   const sortedEquipment = useMemo(
-    () => [...equipment].sort((a, b) => a.item.localeCompare(b.item)),
+    () =>
+      [...equipment].sort(
+        (a, b) =>
+          a.category.localeCompare(b.category) ||
+          a.subcategory.localeCompare(b.subcategory) ||
+          a.item.localeCompare(b.item),
+      ),
     [equipment],
   );
 
@@ -73,7 +79,10 @@ export default function PulloutRequestDetail() {
   );
 
   const matchesSearchTerm = (eq: Equipment, term: string) =>
-    eq.item.toLowerCase().includes(term) || eq.inventoryCode.toLowerCase().includes(term);
+    eq.item.toLowerCase().includes(term) ||
+    eq.inventoryCode.toLowerCase().includes(term) ||
+    eq.category.toLowerCase().includes(term) ||
+    eq.subcategory.toLowerCase().includes(term);
 
   const matchingEquipment = useMemo(() => {
     const pendingIds = new Set(pending.map((eq) => eq.id));
@@ -201,6 +210,10 @@ export default function PulloutRequestDetail() {
                     onClick={() => handleAddPending(eq)}
                   >
                     {eq.item} <span className="text-slate-400 font-mono text-xs">({eq.inventoryCode})</span>
+                    <div className="text-xs text-slate-400">
+                      {eq.category}
+                      {eq.subcategory ? ` / ${eq.subcategory}` : ''}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -217,6 +230,11 @@ export default function PulloutRequestDetail() {
                   <li key={eq.id} className="py-2 flex justify-between items-center text-sm">
                     <span>
                       <span className="font-mono text-slate-500">{eq.inventoryCode}</span> — {eq.item}
+                      <span className="text-slate-400">
+                        {' '}
+                        ({eq.category}
+                        {eq.subcategory ? ` / ${eq.subcategory}` : ''})
+                      </span>
                     </span>
                     <button
                       className="text-red-600 hover:underline text-xs"
@@ -249,6 +267,7 @@ export default function PulloutRequestDetail() {
               <thead className="bg-slate-50 text-slate-500 text-left">
                 <tr>
                   <Th>Item</Th>
+                  <Th>Category</Th>
                   <Th>Code</Th>
                   <Th>Status</Th>
                   <Th className="hidden md:table-cell">Scanned Out</Th>
@@ -260,6 +279,10 @@ export default function PulloutRequestDetail() {
                 {items.map((item) => (
                   <tr key={item.id}>
                     <Td>{item.item}</Td>
+                    <Td className="text-xs text-slate-500">
+                      {item.category}
+                      {item.subcategory ? ` / ${item.subcategory}` : ''}
+                    </Td>
                     <Td className="font-mono text-xs">{item.inventoryCode}</Td>
                     <Td>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ITEM_STATUS_COLORS[item.itemStatus]}`}>
