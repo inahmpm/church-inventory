@@ -199,6 +199,7 @@ export interface PulloutItem {
   inventoryCode: string;
   item: string;
   category: string;
+  subcategory: string;
   itemStatus: PulloutItemStatus;
   scannedOutAt: number | null;
   scannedOutBy: string | null; // Ministry Admin's email

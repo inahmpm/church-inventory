@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { subscribeEquipment } from '../../lib/equipment';
 import { attachItems, removeAttachedItem, subscribePulloutItems, subscribePulloutRequest } from '../../lib/pulloutRequests';
 import { useCurrentUser } from '../../lib/useCurrentUser';
@@ -63,7 +63,13 @@ export default function PulloutRequestDetail() {
   }, [ministryId]);
 
   const sortedEquipment = useMemo(
-    () => [...equipment].sort((a, b) => a.item.localeCompare(b.item)),
+    () =>
+      [...equipment].sort(
+        (a, b) =>
+          a.category.localeCompare(b.category) ||
+          a.subcategory.localeCompare(b.subcategory) ||
+          a.item.localeCompare(b.item),
+      ),
     [equipment],
   );
 
@@ -132,9 +138,9 @@ export default function PulloutRequestDetail() {
     return (
       <div className="space-y-4">
         <p className="text-slate-500">Pull-out request not found.</p>
-        <Link to="/admin/pullout" className="text-primary-600 hover:underline text-sm">
+        <button className="text-primary-600 hover:underline text-sm" onClick={() => navigate(-1)}>
           &larr; Back to Pull-out Requests
-        </Link>
+        </button>
       </div>
     );
   }
@@ -142,7 +148,7 @@ export default function PulloutRequestDetail() {
   return (
     <div className="space-y-6">
       <div>
-        <button className="text-primary-600 hover:underline text-sm mb-2" onClick={() => navigate('/admin/pullout')}>
+        <button className="text-primary-600 hover:underline text-sm mb-2" onClick={() => navigate(-1)}>
           &larr; Back to Pull-out Requests
         </button>
         <div className="flex flex-wrap items-center gap-2">
@@ -201,6 +207,10 @@ export default function PulloutRequestDetail() {
                     onClick={() => handleAddPending(eq)}
                   >
                     {eq.item} <span className="text-slate-400 font-mono text-xs">({eq.inventoryCode})</span>
+                    <div className="text-xs text-slate-400">
+                      {eq.category}
+                      {eq.subcategory ? ` / ${eq.subcategory}` : ''}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -217,6 +227,11 @@ export default function PulloutRequestDetail() {
                   <li key={eq.id} className="py-2 flex justify-between items-center text-sm">
                     <span>
                       <span className="font-mono text-slate-500">{eq.inventoryCode}</span> — {eq.item}
+                      <span className="text-slate-400">
+                        {' '}
+                        ({eq.category}
+                        {eq.subcategory ? ` / ${eq.subcategory}` : ''})
+                      </span>
                     </span>
                     <button
                       className="text-red-600 hover:underline text-xs"
@@ -249,6 +264,7 @@ export default function PulloutRequestDetail() {
               <thead className="bg-slate-50 text-slate-500 text-left">
                 <tr>
                   <Th>Item</Th>
+                  <Th>Category</Th>
                   <Th>Code</Th>
                   <Th>Status</Th>
                   <Th className="hidden md:table-cell">Scanned Out</Th>
@@ -260,6 +276,10 @@ export default function PulloutRequestDetail() {
                 {items.map((item) => (
                   <tr key={item.id}>
                     <Td>{item.item}</Td>
+                    <Td className="text-xs text-slate-500">
+                      {item.category}
+                      {item.subcategory ? ` / ${item.subcategory}` : ''}
+                    </Td>
                     <Td className="font-mono text-xs">{item.inventoryCode}</Td>
                     <Td>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ITEM_STATUS_COLORS[item.itemStatus]}`}>

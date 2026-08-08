@@ -68,6 +68,14 @@
       ]
     },
     {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "item", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "historyLogs",
       "queryScope": "COLLECTION",
       "fields": [
