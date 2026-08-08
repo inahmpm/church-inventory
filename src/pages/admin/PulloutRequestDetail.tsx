@@ -147,33 +147,38 @@ export default function PulloutRequestDetail() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <button className="text-primary-600 hover:underline text-sm mb-2" onClick={() => navigate(-1)}>
-          &larr; Back to Pull-out Requests
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <button className="text-primary-600 hover:underline text-sm mb-2 print:hidden" onClick={() => navigate(-1)}>
+            &larr; Back to Pull-out Requests
+          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-800">{request.purpose}</h1>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[request.status]} print:hidden`}>
+              {STATUS_LABELS[request.status]}
+            </span>
+          </div>
+          <div className="text-sm text-slate-500 mt-1 space-y-0.5">
+            <div>Destination: {request.destination}</div>
+            <div>
+              Pull-out: {new Date(request.pulloutAt).toLocaleString()} &middot; Return due:{' '}
+              {new Date(request.returnDueAt).toLocaleString()}
+            </div>
+            <div>
+              Requestor: {request.requestorName}
+              {request.requestorEmail ? ` (${request.requestorEmail})` : ''}
+            </div>
+          </div>
+        </div>
+        <button className="btn-secondary print:hidden" onClick={() => window.print()}>
+          Print
         </button>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-slate-800">{request.purpose}</h1>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[request.status]}`}>
-            {STATUS_LABELS[request.status]}
-          </span>
-        </div>
-        <div className="text-sm text-slate-500 mt-1 space-y-0.5">
-          <div>Destination: {request.destination}</div>
-          <div>
-            Pull-out: {new Date(request.pulloutAt).toLocaleString()} &middot; Return due:{' '}
-            {new Date(request.returnDueAt).toLocaleString()}
-          </div>
-          <div>
-            Requestor: {request.requestorName}
-            {request.requestorEmail ? ` (${request.requestorEmail})` : ''}
-          </div>
-        </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 print:hidden">{error}</p>}
 
       {canEditItems && (
-        <div className="card p-4 space-y-3 max-w-xl">
+        <div className="card p-4 space-y-3 max-w-xl print:hidden">
           <h2 className="font-medium text-slate-800">Attach Equipment</h2>
           <div className="relative">
             <input
@@ -269,7 +274,7 @@ export default function PulloutRequestDetail() {
                   <Th>Status</Th>
                   <Th className="hidden md:table-cell">Scanned Out</Th>
                   <Th className="hidden md:table-cell">Scanned In</Th>
-                  <Th></Th>
+                  <Th className="print:hidden"></Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -295,7 +300,7 @@ export default function PulloutRequestDetail() {
                     <Td className="hidden md:table-cell text-xs text-slate-500">
                       {item.scannedInAt ? new Date(item.scannedInAt).toLocaleString() : '—'}
                     </Td>
-                    <Td>
+                    <Td className="print:hidden">
                       {canEditItems && item.itemStatus === 'for_pullout' && (
                         <button className="text-red-600 hover:underline text-xs" onClick={() => handleRemove(item)}>
                           Remove

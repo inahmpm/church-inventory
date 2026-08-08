@@ -109,19 +109,19 @@ function IconSearch() {
 }
 
 function availabilityLabel(e: Equipment) {
+  if (e.pulloutStatus) {
+    return (
+      <span className="text-purple-600 font-medium">
+        {e.pulloutStatus === 'pulled_out' ? 'Pulled out' : 'Scheduled for pull-out'}
+      </span>
+    );
+  }
   if (e.assignedType === 'Fixed') {
     return <span className="text-slate-500 font-medium">Fixed — not borrowable</span>;
   }
   if (e.assignedType === 'Issued') {
     return (
       <span className="text-sky-600 font-medium">Issued{e.assignedTo ? ` to ${e.assignedTo}` : ''}</span>
-    );
-  }
-  if (e.pulloutStatus) {
-    return (
-      <span className="text-purple-600 font-medium">
-        {e.pulloutStatus === 'pulled_out' ? 'Pulled out' : 'Scheduled for pull-out'}
-      </span>
     );
   }
   return e.isBorrowed ? (
