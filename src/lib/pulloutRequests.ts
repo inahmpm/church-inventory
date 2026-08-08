@@ -47,22 +47,34 @@ export function subscribePulloutRequests(
   const constraints = [where('ministryId', '==', ministryId)];
   if (statuses && statuses.length > 0) constraints.push(where('status', 'in', statuses));
   const q = query(pulloutRequestsCol, ...constraints, orderBy('pulloutAt', 'desc'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PulloutRequest, 'id'>) })));
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PulloutRequest, 'id'>) })));
+    },
+    (err) => console.error('subscribePulloutRequests failed:', err),
+  );
 }
 
 export function subscribePulloutRequest(requestId: string, cb: (req: PulloutRequest | null) => void) {
-  return onSnapshot(doc(db, 'pulloutRequests', requestId), (snap) => {
-    cb(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<PulloutRequest, 'id'>) } : null);
-  });
+  return onSnapshot(
+    doc(db, 'pulloutRequests', requestId),
+    (snap) => {
+      cb(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<PulloutRequest, 'id'>) } : null);
+    },
+    (err) => console.error('subscribePulloutRequest failed:', err),
+  );
 }
 
 export function subscribePulloutItems(requestId: string, cb: (items: PulloutItem[]) => void) {
   const q = query(itemsCol(requestId), orderBy('category'), orderBy('item'));
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PulloutItem, 'id'>) })));
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PulloutItem, 'id'>) })));
+    },
+    (err) => console.error('subscribePulloutItems failed:', err),
+  );
 }
 
 /**
