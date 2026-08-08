@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { subscribeEquipment } from '../../lib/equipment';
 import { attachItems, removeAttachedItem, subscribePulloutItems, subscribePulloutRequest } from '../../lib/pulloutRequests';
 import { useCurrentUser } from '../../lib/useCurrentUser';
@@ -141,9 +141,9 @@ export default function PulloutRequestDetail() {
     return (
       <div className="space-y-4">
         <p className="text-slate-500">Pull-out request not found.</p>
-        <Link to="/admin/pullout" className="text-primary-600 hover:underline text-sm">
+        <button className="text-primary-600 hover:underline text-sm" onClick={() => navigate(-1)}>
           &larr; Back to Pull-out Requests
-        </Link>
+        </button>
       </div>
     );
   }
@@ -151,7 +151,7 @@ export default function PulloutRequestDetail() {
   return (
     <div className="space-y-6">
       <div>
-        <button className="text-primary-600 hover:underline text-sm mb-2" onClick={() => navigate('/admin/pullout')}>
+        <button className="text-primary-600 hover:underline text-sm mb-2" onClick={() => navigate(-1)}>
           &larr; Back to Pull-out Requests
         </button>
         <div className="flex flex-wrap items-center gap-2">

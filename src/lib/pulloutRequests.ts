@@ -1,7 +1,6 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDocs,
   onSnapshot,
@@ -66,8 +65,47 @@ export function subscribePulloutItems(requestId: string, cb: (items: PulloutItem
   });
 }
 
-export async function deletePulloutRequest(requestId: string) {
-  await deleteDoc(doc(db, 'pulloutRequests', requestId));
+/**
+ * Cancels a pull-out request before verification has started, releasing the
+ * equipment lock on every attached item and deleting the request entirely.
+ */
+export async function cancelPulloutRequest(requestId: string, ministryId: string) {
+  const itemsSnap = await getDocs(itemsCol(requestId));
+  const items = itemsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PulloutItem, 'id'>) }));
+
+  await runTransaction(db, async (tx) => {
+    const reqRef = doc(db, 'pulloutRequests', requestId);
+    const reqSnap = await tx.get(reqRef);
+    const req = reqSnap.data() as PulloutRequest | undefined;
+    if (!req) throw new Error('Pull-out request not found');
+    if (req.status === 'in_progress' || req.status === 'closed') {
+      throw new Error('Cannot cancel a pull-out request once verification has started');
+    }
+
+    const now = Date.now();
+    for (const item of items) {
+      tx.delete(doc(itemsCol(requestId), item.id));
+      tx.update(doc(db, 'equipment', item.equipmentId), {
+        pulloutStatus: null,
+        activePulloutRequestId: null,
+        updatedAt: now,
+      });
+    }
+    tx.delete(reqRef);
+  });
+
+  await Promise.all(
+    items.map((item) =>
+      logHistory({
+        ministryId,
+        equipmentId: item.equipmentId,
+        inventoryCode: item.inventoryCode,
+        item: item.item,
+        action: 'pullout_removed',
+        details: `Pull-out request (${requestId}) cancelled`,
+      }),
+    ),
+  );
 }
 
 /**

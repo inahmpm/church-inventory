@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  cancelPulloutRequest,
   markItemFound,
   markItemMissing,
   scanItemIn,
@@ -11,6 +12,68 @@ import {
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import type { PulloutItem, PulloutRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
+
+function IconCancel() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9 9l6 6M15 9l-6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconScan() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path
+        d="M4 8V5a1 1 0 011-1h3M20 8V5a1 1 0 00-1-1h-3M4 16v3a1 1 0 001 1h3M20 16v3a1 1 0 01-1 1h-3M4 12h16"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconWarning() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path
+        d="M12 9v4m0 4h.01M10.29 3.86l-8.18 14.18A1 1 0 003 19.5h18a1 1 0 00.87-1.46l-8.18-14.18a1 1 0 00-1.73 0z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ActionButton({
+  onClick,
+  label,
+  colorClass,
+  children,
+  disabled,
+}: {
+  onClick: (e: React.MouseEvent) => void;
+  label: string;
+  colorClass: string;
+  children: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`p-1.5 rounded-md hover:bg-slate-100 disabled:hover:bg-transparent disabled:cursor-not-allowed ${
+        disabled ? 'text-slate-300' : colorClass
+      }`}
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 const STATUS_LABELS: Record<PulloutRequest['status'], string> = {
   draft: 'Draft',
@@ -38,15 +101,34 @@ const ITEM_STATUS_COLORS: Record<PulloutItem['itemStatus'], string> = {
   missing: 'bg-red-100 text-red-700',
 };
 
-type Tab = 'due' | 'all';
+type Tab = 'today' | 'all' | 'past';
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'today', label: "Today's Requests" },
+  { key: 'all', label: 'All Requests' },
+  { key: 'past', label: 'Past Requests' },
+];
 
-function isDueOrOverdue(r: PulloutRequest): boolean {
-  return r.pulloutAt <= Date.now() && (r.status === 'scheduled' || r.status === 'in_progress');
+function isSameDay(a: number, b: number): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+}
+
+function isToday(r: PulloutRequest): boolean {
+  return isSameDay(r.pulloutAt, Date.now());
+}
+
+function isPast(r: PulloutRequest): boolean {
+  return r.pulloutAt < Date.now() && !isToday(r);
 }
 
 // Draft requests have no items to act on yet; every other status can still
 // have a scan pending or a missing item waiting to be resolved.
 const OPENABLE_STATUSES: PulloutRequest['status'][] = ['scheduled', 'in_progress', 'closed'];
+
+// A request can only be cancelled before verification has started — once an
+// item has been scanned out, cancelling would strand its equipment lock.
+const CANCELABLE_STATUSES: PulloutRequest['status'][] = ['draft', 'scheduled'];
 
 export default function PulloutRequests() {
   const { profile } = useCurrentUser();
@@ -54,8 +136,16 @@ export default function PulloutRequests() {
   const navigate = useNavigate();
 
   const [requests, setRequests] = useState<PulloutRequest[]>([]);
-  const [tab, setTab] = useState<Tab>('due');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab: Tab = tabParam === 'all' || tabParam === 'past' ? tabParam : 'today';
   const [scanning, setScanning] = useState<PulloutRequest | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function setTab(next: Tab) {
+    setSearchParams(next === 'today' ? {} : { tab: next }, { replace: true });
+  }
 
   useEffect(() => {
     if (!ministryId) return;
@@ -72,8 +162,24 @@ export default function PulloutRequests() {
 
   const rows = useMemo(() => {
     const sorted = [...requests].sort((a, b) => a.pulloutAt - b.pulloutAt);
-    return tab === 'due' ? sorted.filter(isDueOrOverdue) : sorted;
+    if (tab === 'today') return sorted.filter(isToday);
+    if (tab === 'past') return sorted.filter(isPast);
+    return sorted;
   }, [requests, tab]);
+
+  async function handleCancel(r: PulloutRequest) {
+    if (!ministryId) return;
+    if (!confirm(`Cancel the pull-out request "${r.purpose}"? This cannot be undone.`)) return;
+    setError(null);
+    setCancellingId(r.id);
+    try {
+      await cancelPulloutRequest(r.id, ministryId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel pull-out request.');
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -90,21 +196,19 @@ export default function PulloutRequests() {
       </div>
 
       <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
-        <button
-          type="button"
-          className={`px-3 py-1.5 ${tab === 'due' ? 'bg-primary-600 text-white' : 'bg-white text-slate-600'}`}
-          onClick={() => setTab('due')}
-        >
-          Due Today
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 ${tab === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-slate-600'}`}
-          onClick={() => setTab('all')}
-        >
-          All Requests
-        </button>
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            className={`px-3 py-1.5 ${tab === key ? 'bg-primary-600 text-white' : 'bg-white text-slate-600'}`}
+            onClick={() => setTab(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {/* Mobile card list */}
       <div className="space-y-2 sm:hidden">
@@ -121,11 +225,24 @@ export default function PulloutRequests() {
               <div className="text-xs text-slate-500">Pull-out: {new Date(r.pulloutAt).toLocaleString()}</div>
               <div className="text-xs text-slate-400">{r.itemCount} item(s)</div>
             </Link>
-            {OPENABLE_STATUSES.includes(r.status) && (
-              <button className="text-primary-600 hover:underline text-xs pt-1" onClick={() => setScanning(r)}>
-                {r.status === 'closed' ? 'Resolve missing' : 'Scan'}
-              </button>
-            )}
+            <div className="flex items-center justify-end gap-1 pt-1 -mr-1.5">
+              <ActionButton
+                label={r.status === 'closed' ? 'Resolve missing' : 'Scan'}
+                colorClass="text-primary-600"
+                disabled={!OPENABLE_STATUSES.includes(r.status)}
+                onClick={() => setScanning(r)}
+              >
+                {r.status === 'closed' ? <IconWarning /> : <IconScan />}
+              </ActionButton>
+              <ActionButton
+                label="Cancel pull-out request"
+                colorClass="text-red-600"
+                disabled={!CANCELABLE_STATUSES.includes(r.status) || cancellingId === r.id}
+                onClick={() => handleCancel(r)}
+              >
+                <IconCancel />
+              </ActionButton>
+            </div>
           </div>
         ))}
         {rows.length === 0 && <div className="text-center text-slate-400 py-8">No pull-out requests here.</div>}
@@ -158,18 +275,31 @@ export default function PulloutRequests() {
                     {STATUS_LABELS[r.status]}
                   </span>
                 </Td>
-                <Td>
-                  {OPENABLE_STATUSES.includes(r.status) && (
-                    <button
-                      className="text-primary-600 hover:underline text-xs"
+                <Td className="whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <ActionButton
+                      label={r.status === 'closed' ? 'Resolve missing' : 'Scan'}
+                      colorClass="text-primary-600"
+                      disabled={!OPENABLE_STATUSES.includes(r.status)}
                       onClick={(e) => {
                         e.stopPropagation();
                         setScanning(r);
                       }}
                     >
-                      {r.status === 'closed' ? 'Resolve missing' : 'Scan'}
-                    </button>
-                  )}
+                      {r.status === 'closed' ? <IconWarning /> : <IconScan />}
+                    </ActionButton>
+                    <ActionButton
+                      label="Cancel pull-out request"
+                      colorClass="text-red-600"
+                      disabled={!CANCELABLE_STATUSES.includes(r.status) || cancellingId === r.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancel(r);
+                      }}
+                    >
+                      <IconCancel />
+                    </ActionButton>
+                  </div>
                 </Td>
               </tr>
             ))}
