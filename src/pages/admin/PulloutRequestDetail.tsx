@@ -79,10 +79,7 @@ export default function PulloutRequestDetail() {
   );
 
   const matchesSearchTerm = (eq: Equipment, term: string) =>
-    eq.item.toLowerCase().includes(term) ||
-    eq.inventoryCode.toLowerCase().includes(term) ||
-    eq.category.toLowerCase().includes(term) ||
-    eq.subcategory.toLowerCase().includes(term);
+    eq.item.toLowerCase().includes(term) || eq.inventoryCode.toLowerCase().includes(term);
 
   const matchingEquipment = useMemo(() => {
     const pendingIds = new Set(pending.map((eq) => eq.id));
