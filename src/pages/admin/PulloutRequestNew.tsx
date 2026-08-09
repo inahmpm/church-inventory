@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPulloutRequest } from '../../lib/pulloutRequests';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 
 function toDatetimeLocal(ts: number): string {
   const d = new Date(ts);
@@ -10,7 +10,7 @@ function toDatetimeLocal(ts: number): string {
 }
 
 export default function PulloutRequestNew() {
-  const { profile } = useCurrentUser();
+  const { ministryId } = useActiveMinistry();
   const navigate = useNavigate();
 
   const [purpose, setPurpose] = useState('');
@@ -24,7 +24,7 @@ export default function PulloutRequestNew() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile?.ministryId) return;
+    if (!ministryId) return;
 
     if (!purpose.trim()) return setError('Enter the pull-out purpose.');
     if (!destination.trim()) return setError('Enter the destination.');
@@ -39,7 +39,7 @@ export default function PulloutRequestNew() {
     setSaving(true);
     try {
       const id = await createPulloutRequest({
-        ministryId: profile.ministryId,
+        ministryId,
         purpose: purpose.trim(),
         pulloutAt: pulloutMs,
         returnDueAt: returnMs,

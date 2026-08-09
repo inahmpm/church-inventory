@@ -7,10 +7,8 @@ import {
   updateEquipment,
 } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
-import { useCurrentUser } from '../../lib/useCurrentUser';
-import { getMinistry } from '../../lib/ministries';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import { ASSIGNED_TYPES, EQUIPMENT_STATUSES } from '../../types';
-import type { Ministry } from '../../types';
 import type { AssignedType, Category, Equipment, NewEquipment } from '../../types';
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
@@ -132,9 +130,7 @@ function availabilityLabel(e: Equipment) {
 }
 
 export default function Inventory() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
-  const [ministry, setMinistry] = useState<Ministry | null>(null);
+  const { ministryId, ministry } = useActiveMinistry();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
@@ -160,10 +156,6 @@ export default function Inventory() {
   useEffect(() => {
     if (!ministryId) return;
     return subscribeCategories(ministryId, setCategories);
-  }, [ministryId]);
-  useEffect(() => {
-    if (!ministryId) return;
-    getMinistry(ministryId).then(setMinistry);
   }, [ministryId]);
 
   useEffect(() => {

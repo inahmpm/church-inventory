@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { getMinistry } from '../../lib/ministries';
 import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import {
   createUserInMinistry,
   sendUserPasswordReset,
@@ -8,7 +8,7 @@ import {
   setUserRole,
   subscribeMinistryUsers,
 } from '../../lib/users';
-import type { AppUser, Ministry, UserRole } from '../../types';
+import type { AppUser, UserRole } from '../../types';
 
 function generateTempPassword() {
   return `Church${Math.floor(1000 + Math.random() * 9000)}!${Math.random().toString(36).slice(2, 6)}`;
@@ -16,7 +16,7 @@ function generateTempPassword() {
 
 export default function Users() {
   const { profile } = useCurrentUser();
-  const [ministry, setMinistry] = useState<Ministry | null>(null);
+  const { ministryId, ministry } = useActiveMinistry();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,16 +30,9 @@ export default function Users() {
   const [resettingUid, setResettingUid] = useState<string | null>(null);
   const [resetSentUid, setResetSentUid] = useState<string | null>(null);
 
-  const ministryId = profile?.ministryId;
-
   useEffect(() => {
     if (!ministryId) return;
     return subscribeMinistryUsers(ministryId, setUsers);
-  }, [ministryId]);
-
-  useEffect(() => {
-    if (!ministryId) return;
-    getMinistry(ministryId).then(setMinistry);
   }, [ministryId]);
 
   async function handleCreate(e: FormEvent) {

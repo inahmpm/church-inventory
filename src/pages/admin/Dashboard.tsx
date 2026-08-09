@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeBorrowRequests } from '../../lib/borrowRequests';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest, Equipment } from '../../types';
 import { EQUIPMENT_STATUSES } from '../../types';
 
 export default function Dashboard() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [pending, setPending] = useState<BorrowRequest[]>([]);
   const [active, setActive] = useState<BorrowRequest[]>([]);

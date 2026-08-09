@@ -3,19 +3,63 @@ import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { useCurrentUser } from '../../lib/useCurrentUser';
-import { getMinistry } from '../../lib/ministries';
+import { MinistryProvider, useActiveMinistry } from '../../lib/MinistryContext';
 import { subscribeBorrowRequests } from '../../lib/borrowRequests';
-import type { BorrowRequest, Ministry } from '../../types';
+import type { BorrowRequest } from '../../types';
 
 export default function AdminLayout() {
   const { authUser, profile } = useCurrentUser();
   const location = useLocation();
+
+  if (authUser === undefined || profile === undefined) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading...</div>;
+  }
+  if (authUser === null) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  if (profile === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-500 text-center px-4">
+        Your account isn't set up in any ministry yet. Ask an admin to add you.
+      </div>
+    );
+  }
+  if (!profile.active) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-500 text-center px-4">
+        Your access has been disabled. Contact your ministry admin.
+      </div>
+    );
+  }
+  if (profile.mustChangePassword && location.pathname !== '/admin/change-password') {
+    return <Navigate to="/admin/change-password" replace />;
+  }
+
+  return (
+    <MinistryProvider>
+      <AdminLayoutContent
+        authUserEmail={authUser.email ?? ''}
+        canManageUsers={profile.role === 'ministry-admin' || profile.role === 'super-admin'}
+        canManageMinistries={profile.role === 'super-admin'}
+      />
+    </MinistryProvider>
+  );
+}
+
+function AdminLayoutContent({
+  authUserEmail,
+  canManageUsers,
+  canManageMinistries,
+}: {
+  authUserEmail: string;
+  canManageUsers: boolean;
+  canManageMinistries: boolean;
+}) {
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
   const [active, setActive] = useState<BorrowRequest[]>([]);
-  const [ministry, setMinistry] = useState<Ministry | null>(null);
-
-  const ministryId = profile?.ministryId;
+  const { ministryId, ministry, ministries, isSuperAdmin, setMinistryId } = useActiveMinistry();
 
   useEffect(() => {
     if (!ministryId) return;
@@ -25,19 +69,8 @@ export default function AdminLayout() {
     if (!ministryId) return;
     return subscribeBorrowRequests(['borrowed'], setActive, ministryId);
   }, [ministryId]);
-  useEffect(() => {
-    if (!ministryId) {
-      setMinistry(null);
-      return;
-    }
-    getMinistry(ministryId).then(setMinistry);
-  }, [ministryId]);
-
   const pendingCount = requests.filter((r) => !r.fulfilledAt).length;
   const activeCount = active.filter((r) => r.fulfilledAt).length;
-
-  const canManageUsers = profile?.role === 'ministry-admin' || profile?.role === 'super-admin';
-  const canManageMinistries = profile?.role === 'super-admin';
 
   const navGroups: {
     label?: string;
@@ -71,30 +104,6 @@ export default function AdminLayout() {
   ];
 
   const navItems = navGroups.flatMap((group) => group.items);
-
-  if (authUser === undefined || profile === undefined) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading...</div>;
-  }
-  if (authUser === null) {
-    return <Navigate to="/admin/login" replace />;
-  }
-  if (profile === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-slate-500 text-center px-4">
-        Your account isn't set up in any ministry yet. Ask an admin to add you.
-      </div>
-    );
-  }
-  if (!profile.active) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-slate-500 text-center px-4">
-        Your access has been disabled. Contact your ministry admin.
-      </div>
-    );
-  }
-  if (profile.mustChangePassword && location.pathname !== '/admin/change-password') {
-    return <Navigate to="/admin/change-password" replace />;
-  }
 
   const activeLabel = navItems.find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
@@ -143,6 +152,25 @@ export default function AdminLayout() {
             &times;
           </button>
         </div>
+        {isSuperAdmin && ministries.length > 0 && (
+          <div className="px-4 py-3 border-b border-slate-200 bg-primary-50/50">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-primary-700 mb-1">
+              Viewing Ministry
+            </label>
+            <select
+              className="input py-1.5 text-sm font-medium"
+              value={ministryId ?? ''}
+              onChange={(e) => setMinistryId(e.target.value)}
+              aria-label="Ministry"
+            >
+              {ministries.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-4">
           {navGroups.map((group, i) => (
             <div key={group.label ?? i}>
@@ -192,7 +220,7 @@ export default function AdminLayout() {
           ))}
         </nav>
         <div className="px-4 py-4 border-t border-slate-200 space-y-2">
-          <div className="text-sm text-slate-500 truncate">{authUser.email}</div>
+          <div className="text-sm text-slate-500 truncate">{authUserEmail}</div>
           <button
             className="text-sm text-slate-500 hover:text-slate-800"
             onClick={() => signOut(auth)}

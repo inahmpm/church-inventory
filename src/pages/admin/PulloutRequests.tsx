@@ -10,6 +10,7 @@ import {
   subscribePulloutRequests,
 } from '../../lib/pulloutRequests';
 import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { PulloutItem, PulloutRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
 
@@ -131,8 +132,7 @@ const OPENABLE_STATUSES: PulloutRequest['status'][] = ['scheduled', 'in_progress
 const CANCELABLE_STATUSES: PulloutRequest['status'][] = ['draft', 'scheduled'];
 
 export default function PulloutRequests() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const navigate = useNavigate();
 
   const [requests, setRequests] = useState<PulloutRequest[]>([]);
