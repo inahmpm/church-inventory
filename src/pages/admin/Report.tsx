@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import { EQUIPMENT_STATUSES } from '../../types';
 import type { Equipment } from '../../types';
 
@@ -19,8 +19,7 @@ function emptyPurchaseRow(id: number): PurchaseRow {
 }
 
 export default function Report() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [section, setSection] = useState('Technology');
   const [category, setCategory] = useState('All');

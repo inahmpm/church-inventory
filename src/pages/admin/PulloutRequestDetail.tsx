@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { subscribeEquipment } from '../../lib/equipment';
 import { attachItems, removeAttachedItem, subscribePulloutItems, subscribePulloutRequest } from '../../lib/pulloutRequests';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { Equipment, PulloutItem, PulloutRequest } from '../../types';
 
 const STATUS_LABELS: Record<PulloutRequest['status'], string> = {
@@ -34,8 +34,7 @@ const ITEM_STATUS_COLORS: Record<PulloutItem['itemStatus'], string> = {
 export default function PulloutRequestDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
 
   const [request, setRequest] = useState<PulloutRequest | null | undefined>(undefined);
   const [items, setItems] = useState<PulloutItem[]>([]);

@@ -6,13 +6,12 @@ import {
   scanEquipmentIntoRequest,
   subscribeBorrowRequests,
 } from '../../lib/borrowRequests';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
 
 export default function Requests() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
   const [open, setOpen] = useState<BorrowRequest | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);

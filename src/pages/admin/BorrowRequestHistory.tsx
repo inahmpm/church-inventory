@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { subscribeBorrowRequests } from '../../lib/borrowRequests';
 import { HISTORY_LOG_ACTION_COLORS, HISTORY_LOG_ACTION_LABELS } from '../../lib/historyLogs';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
 
 export default function BorrowRequestHistory() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
 
   useEffect(() => {

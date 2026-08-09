@@ -6,12 +6,11 @@ import {
   removeSubcategory,
   subscribeCategories,
 } from '../../lib/categories';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { Category } from '../../types';
 
 export default function Categories() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [subcategoryDrafts, setSubcategoryDrafts] = useState<Record<string, string>>({});

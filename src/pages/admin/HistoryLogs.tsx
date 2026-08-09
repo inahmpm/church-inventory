@@ -4,13 +4,12 @@ import {
   HISTORY_LOG_ACTION_LABELS as ACTION_LABELS,
   subscribeHistoryLogs,
 } from '../../lib/historyLogs';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import { HISTORY_LOG_ACTIONS } from '../../types';
 import type { HistoryLogAction, HistoryLogEntry } from '../../types';
 
 export default function HistoryLogs() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [logs, setLogs] = useState<HistoryLogEntry[]>([]);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<'' | HistoryLogAction>('');

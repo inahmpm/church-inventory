@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { createPullout, deletePullout, subscribePullouts } from '../../lib/equipmentPullouts';
-import { getMinistry } from '../../lib/ministries';
-import { useCurrentUser } from '../../lib/useCurrentUser';
-import type { Equipment, EquipmentPullout, Ministry } from '../../types';
+import { useActiveMinistry } from '../../lib/MinistryContext';
+import type { Equipment, EquipmentPullout } from '../../types';
 
 function IconPrinter() {
   return (
@@ -28,10 +27,8 @@ function toDatetimeLocal(ts: number): string {
 }
 
 export default function EquipmentPulloutPage() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId, ministry } = useActiveMinistry();
 
-  const [ministry, setMinistry] = useState<Ministry | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [pullouts, setPullouts] = useState<EquipmentPullout[]>([]);
   const [equipmentId, setEquipmentId] = useState('');
@@ -41,14 +38,6 @@ export default function EquipmentPulloutPage() {
   const [pulloutAt, setPulloutAt] = useState(() => toDatetimeLocal(Date.now()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!ministryId) {
-      setMinistry(null);
-      return;
-    }
-    getMinistry(ministryId).then(setMinistry);
-  }, [ministryId]);
 
   useEffect(() => {
     if (!ministryId) return;

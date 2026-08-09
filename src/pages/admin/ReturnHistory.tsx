@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { subscribeBorrowRequests } from '../../lib/borrowRequests';
-import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
 
 export default function ReturnHistory() {
-  const { profile } = useCurrentUser();
-  const ministryId = profile?.ministryId;
+  const { ministryId } = useActiveMinistry();
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
 
   useEffect(() => {
