@@ -23,8 +23,8 @@ const mailCol = collection(db, 'mail');
 const handedOutTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_HANDED_OUT;
 const returnedTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_RETURNED;
 
-function sendMail(ministryId: string, to: string, subject: string, html: string) {
-  return addDoc(mailCol, { ministryId, to, message: { subject, html } });
+function sendMail(ministryId: string, to: string, subject: string, html: string, requestId?: string) {
+  return addDoc(mailCol, { ministryId, to, message: { subject, html }, ...(requestId ? { requestId } : {}) });
 }
 
 export interface PublicBorrowInput {
@@ -38,7 +38,7 @@ export interface PublicBorrowInput {
 }
 
 export async function submitBorrowRequest(input: PublicBorrowInput, notificationEmail: string) {
-  await addDoc(requestsCol, {
+  const requestDoc = await addDoc(requestsCol, {
     ...input,
     status: 'pending',
     items: [],
@@ -53,14 +53,17 @@ export async function submitBorrowRequest(input: PublicBorrowInput, notification
        <li><strong>Venue:</strong> ${input.venue}</li>
        <li><strong>Equipment requested:</strong> ${input.equipmentRequested}</li>
      </ul>`;
-  const mails = [
-    sendMail(
-      input.ministryId,
-      notificationEmail,
-      `New borrow request from ${input.name}`,
-      `<p><strong>${input.name}</strong> (${input.ministry}) submitted a new equipment borrow request.</p>${requestSummary}`,
-    ),
-  ];
+  const mails = [];
+  if (notificationEmail) {
+    mails.push(
+      sendMail(
+        input.ministryId,
+        notificationEmail,
+        `New borrow request from ${input.name}`,
+        `<p><strong>${input.name}</strong> (${input.ministry}) submitted a new equipment borrow request.</p>${requestSummary}`,
+      ),
+    );
+  }
   if (input.email) {
     mails.push(
       sendMail(
@@ -68,6 +71,7 @@ export async function submitBorrowRequest(input: PublicBorrowInput, notification
         input.email,
         'Your borrow request was submitted',
         `<p>Hi ${input.name}, your equipment borrow request has been received and is pending approval.</p>${requestSummary}`,
+        requestDoc.id,
       ),
     );
   }

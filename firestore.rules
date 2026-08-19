@@ -141,14 +141,21 @@ service cloud.firestore {
 
     // Mail queue consumed by the "Trigger Email" extension. The public borrow
     // form can only queue a notification to the target ministry's own
-    // notification address; signed-in admins (finalizing/returning requests)
-    // can queue mail to any address. No one can read/update/delete — only the
-    // extension's service account touches these docs after creation, which
-    // bypasses these rules.
+    // notification address, or a confirmation back to the borrower who just
+    // submitted (proven by pointing requestId at their own just-created,
+    // still-pending borrowRequest doc, ministry-matched); signed-in admins
+    // (finalizing/returning requests) can queue mail to any address. No one
+    // can read/update/delete — only the extension's service account touches
+    // these docs after creation, which bypasses these rules.
     match /mail/{mailId} {
       allow create: if isSignedIn() ||
-        exists(/databases/$(database)/documents/ministries/$(request.resource.data.ministryId)) &&
-        get(/databases/$(database)/documents/ministries/$(request.resource.data.ministryId)).data.notificationEmail == request.resource.data.to;
+        (exists(/databases/$(database)/documents/ministries/$(request.resource.data.ministryId)) &&
+          get(/databases/$(database)/documents/ministries/$(request.resource.data.ministryId)).data.notificationEmail == request.resource.data.to) ||
+        (request.resource.data.requestId is string &&
+          exists(/databases/$(database)/documents/borrowRequests/$(request.resource.data.requestId)) &&
+          get(/databases/$(database)/documents/borrowRequests/$(request.resource.data.requestId)).data.ministryId == request.resource.data.ministryId &&
+          get(/databases/$(database)/documents/borrowRequests/$(request.resource.data.requestId)).data.email == request.resource.data.to &&
+          get(/databases/$(database)/documents/borrowRequests/$(request.resource.data.requestId)).data.status == 'pending');
       allow read, update, delete: if false;
     }
   }
