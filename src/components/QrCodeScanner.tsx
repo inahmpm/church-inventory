@@ -19,12 +19,29 @@ export default function QrCodeScanner({ onScan }: { onScan: (code: string) => vo
       verbose: false,
     });
     scannerRef.current = scanner;
+    // html5-qrcode calls this once per decoded video frame (up to `fps` times a
+    // second) for as long as the same code stays in view, so without a cooldown
+    // a single scan fires the same onScan (and its Firestore transaction)
+    // dozens of times a second — enough to trip Firestore's rate limit. Pause
+    // the scanner on a hit and resume after a beat so each code fires once.
+    let cooling = false;
     scanner
       .start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
+          if (cooling) return;
+          cooling = true;
+          scanner.pause(true);
           onScan(decodedText.trim());
+          setTimeout(() => {
+            cooling = false;
+            try {
+              scanner.resume();
+            } catch {
+              // scanner may have been stopped/torn down during the cooldown
+            }
+          }, 1500);
         },
         () => {
           // ignore per-frame decode failures
