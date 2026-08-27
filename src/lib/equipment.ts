@@ -57,7 +57,23 @@ export function subscribeEquipment(ministryId: string, cb: (items: Equipment[]) 
   });
 }
 
+export function generateInventoryCode(prefix: string, existingCodes: Iterable<string>): string {
+  const taken = new Set(existingCodes);
+  let code: string;
+  do {
+    const random = Math.floor(Math.random() * 10_000)
+      .toString()
+      .padStart(4, '0');
+    code = `${prefix}-${random}`;
+  } while (taken.has(code));
+  return code;
+}
+
 export async function createEquipment(data: NewEquipment) {
+  const existing = await findEquipmentByCode(data.ministryId, data.inventoryCode);
+  if (existing) {
+    throw new Error(`Inventory code "${data.inventoryCode}" is already used by "${existing.item}".`);
+  }
   const ref = await addDoc(equipmentCol, {
     ...data,
     isBorrowed: false,
