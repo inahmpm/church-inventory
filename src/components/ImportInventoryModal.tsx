@@ -2,7 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { ASSIGNED_TYPES, EQUIPMENT_STATUSES } from '../types';
 import type { AssignedType, EquipmentStatus, NewEquipment } from '../types';
 import { parseCsv } from '../lib/csv';
-import { createEquipment } from '../lib/equipment';
+import { createEquipment, generateInventoryCode } from '../lib/equipment';
 
 type ImportableEquipment = Omit<NewEquipment, 'ministryId'>;
 
@@ -34,7 +34,7 @@ const HEADER_ALIASES: Record<string, keyof ImportableEquipment> = {
   statusdetails: 'statusDetails',
 };
 
-function parseRows(text: string): ParsedRow[] {
+function parseRows(text: string, inventoryCodePrefix: string, existingCodes: string[]): ParsedRow[] {
   const table = parseCsv(text);
   if (table.length === 0) return [];
 
@@ -45,6 +45,11 @@ function parseRows(text: string): ParsedRow[] {
     if (key) colIndex[key] = i;
   });
 
+  // Tracks codes already claimed by earlier rows in this same file, in
+  // addition to codes already in the database — so duplicates within the
+  // CSV itself are caught, not just duplicates against existing inventory.
+  const usedCodes = new Set(existingCodes);
+
   return table.slice(1).map((cols, i) => {
     const line = i + 2;
     const get = (key: keyof ImportableEquipment) => {
@@ -53,11 +58,21 @@ function parseRows(text: string): ParsedRow[] {
     };
 
     const category = get('category');
-    const inventoryCode = get('inventoryCode');
     const item = get('item');
     if (!item) {
       return { line, data: null, error: 'Missing required field (Item).' };
     }
+
+    const inventoryCodeRaw = get('inventoryCode').toUpperCase();
+    let inventoryCode: string;
+    if (!inventoryCodeRaw) {
+      inventoryCode = generateInventoryCode(inventoryCodePrefix, usedCodes);
+    } else if (usedCodes.has(inventoryCodeRaw)) {
+      return { line, data: null, error: `Duplicate Inventory Code "${inventoryCodeRaw}" (already in use).` };
+    } else {
+      inventoryCode = inventoryCodeRaw;
+    }
+    usedCodes.add(inventoryCode);
 
     const statusRaw = get('status');
     const status = (EQUIPMENT_STATUSES as readonly string[]).includes(statusRaw)
@@ -75,7 +90,7 @@ function parseRows(text: string): ParsedRow[] {
       data: {
         category,
         subcategory: get('subcategory'),
-        inventoryCode: inventoryCode.toUpperCase(),
+        inventoryCode,
         serialNumber: get('serialNumber'),
         item,
         assignedType,
@@ -93,9 +108,13 @@ function parseRows(text: string): ParsedRow[] {
 
 export default function ImportInventoryModal({
   ministryId,
+  inventoryCodePrefix,
+  existingCodes,
   onClose,
 }: {
   ministryId: string;
+  inventoryCodePrefix: string;
+  existingCodes: string[];
   onClose: () => void;
 }) {
   const [rows, setRows] = useState<ParsedRow[] | null>(null);
@@ -109,7 +128,7 @@ export default function ImportInventoryModal({
     setFileName(file.name);
     setResult(null);
     const text = await file.text();
-    setRows(parseRows(text));
+    setRows(parseRows(text, inventoryCodePrefix, existingCodes));
   }
 
   async function handleImport() {

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { generateInventoryCode } from '../lib/equipment';
 import { HISTORY_LOG_ACTION_COLORS, HISTORY_LOG_ACTION_LABELS, subscribeHistoryLogs } from '../lib/historyLogs';
 import { ASSIGNED_TYPES, EQUIPMENT_STATUSES } from '../types';
 import type { AssignedType, Category, Equipment, EquipmentStatus, HistoryLogEntry, Ministry, NewEquipment } from '../types';
@@ -37,7 +38,7 @@ export default function EquipmentPanel({
           ? blankForm(ministry.id, initial)
           : {
               ...blankForm(ministry.id, initial),
-              inventoryCode: generateInventoryCode(ministry.inventoryCodePrefix, existingCodes),
+              inventoryCode: generateInventoryCode(ministry.inventoryCodePrefix, existingCodes ?? []),
             },
       );
       setError(null);
@@ -346,18 +347,6 @@ export default function EquipmentPanel({
   );
 }
 
-
-function generateInventoryCode(prefix: string, existingCodes?: string[]): string {
-  const taken = new Set(existingCodes ?? []);
-  let code: string;
-  do {
-    const random = Math.floor(Math.random() * 10_000)
-      .toString()
-      .padStart(4, '0');
-    code = `${prefix}-${random}`;
-  } while (taken.has(code));
-  return code;
-}
 
 function blankForm(ministryId: string, initial?: Equipment): NewEquipment {
   return {

@@ -680,8 +680,13 @@ export default function Inventory() {
         />
       )}
 
-      {importing && ministryId && (
-        <ImportInventoryModal ministryId={ministryId} onClose={() => setImporting(false)} />
+      {importing && ministryId && ministry && (
+        <ImportInventoryModal
+          ministryId={ministryId}
+          inventoryCodePrefix={ministry.inventoryCodePrefix}
+          existingCodes={equipment.map((e) => e.inventoryCode)}
+          onClose={() => setImporting(false)}
+        />
       )}
 
       {exporting && <ExportInventoryModal equipment={sorted} onClose={() => setExporting(false)} />}
