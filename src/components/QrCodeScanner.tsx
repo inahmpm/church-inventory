@@ -12,6 +12,18 @@ export default function QrCodeScanner({ onScan }: { onScan: (code: string) => vo
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const regionId = 'qr-scanner-region';
 
+  // The scan-handling effect below only restarts on `cameraOn`, so it would
+  // otherwise close over whatever `onScan` was when the camera turned on.
+  // Callers like the scan-in/scan-out toggle create a new `onScan` on every
+  // mode switch without turning the camera off, so a stale closure meant the
+  // scanner kept dispatching to the mode active when the camera started —
+  // it looked like the app didn't notice the switch until you refreshed.
+  // Route through a ref so the effect always calls the latest onScan.
+  const onScanRef = useRef(onScan);
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
   useEffect(() => {
     if (!cameraOn) return;
     const scanner = new Html5Qrcode(regionId, {
@@ -33,7 +45,7 @@ export default function QrCodeScanner({ onScan }: { onScan: (code: string) => vo
           if (cooling) return;
           cooling = true;
           scanner.pause(true);
-          onScan(decodedText.trim());
+          onScanRef.current(decodedText.trim());
           setTimeout(() => {
             cooling = false;
             try {
@@ -59,7 +71,7 @@ export default function QrCodeScanner({ onScan }: { onScan: (code: string) => vo
     e.preventDefault();
     const code = manualCode.trim();
     if (!code) return;
-    onScan(code);
+    onScanRef.current(code);
     setManualCode('');
   }
 
