@@ -2,7 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import { EQUIPMENT_STATUSES } from '../../types';
-import type { Equipment } from '../../types';
+import type { Equipment, EquipmentStatus } from '../../types';
+
+const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
+  'Good Condition': 'bg-green-500',
+  'Fair Condition': 'bg-yellow-400',
+  'For Repair': 'bg-orange-500',
+  'For Replacement': 'bg-purple-500',
+  'For Disposal': 'bg-red-500',
+};
 
 const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -149,6 +157,10 @@ export default function Report() {
         </div>
       </div>
 
+      <div className="flex justify-end">
+        <StatusLegend />
+      </div>
+
       <div className="print:hidden">
         <label className="block max-w-xs">
           <span className="block text-sm font-medium text-slate-700 mb-1">Section</span>
@@ -176,48 +188,50 @@ export default function Report() {
           </div>
         </div>
 
-        <div className="overflow-x-auto pr-10 print:pr-0">
-          <table className="min-w-full table-fixed text-xs sm:text-sm print:text-[10px] border border-slate-200">
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-slate-200">
             <colgroup>
-              <col className="w-[20%]" />
-              <col className="w-[12%]" />
-              <col className="w-[15%]" />
-              <col className="w-[10%]" />
-              <col className="w-[13%]" />
-              <col className="w-[10%]" />
-              <col className="w-[20%]" />
+              <col className="print:w-[5%]" />
+              <col className="print:w-[20%]" />
+              <col className="print:w-[14%]" />
+              <col className="print:w-[18%]" />
+              <col className="print:w-[10%]" />
+              <col className="print:w-[14%]" />
+              <col className="print:w-[19%]" />
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
-                <Th className="!whitespace-normal">Items</Th>
-                <Th className="!whitespace-normal">Location</Th>
-                <Th className="!whitespace-normal">Assigned to</Th>
-                <Th className="!whitespace-normal">Role</Th>
-                <Th className="!whitespace-normal">Purchase Date</Th>
-                <Th className="!whitespace-normal">Status</Th>
-                <Th className="!whitespace-normal">Recommendation</Th>
+                <Th className="!whitespace-normal text-center">Status</Th>
+                <Th className="text-center print:!whitespace-normal">Items</Th>
+                <Th className="text-center print:!whitespace-normal">Location</Th>
+                <Th className="text-center print:!whitespace-normal">Assigned to</Th>
+                <Th className="text-center print:!whitespace-normal">Role</Th>
+                <Th className="text-center print:!whitespace-normal">Purchase Date</Th>
+                <Th className="!whitespace-normal text-center w-full print:w-auto">Notes</Th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((e) => (
                 <tr
                   key={e.id}
-                  className={`relative border-t border-slate-200 ${
-                    highlightedDetails.has(e.id) ? 'bg-orange-100 print:bg-orange-100' : ''
+                  className={`border-t border-slate-200 ${
+                    highlightedDetails.has(e.id) ? 'bg-sky-100 print:bg-sky-100' : ''
                   }`}
                 >
-                  <Td>{e.item}</Td>
-                  <Td>{e.location || '—'}</Td>
-                  <Td>{e.assignedTo || '—'}</Td>
-                  <Td>{e.subcategory || '—'}</Td>
-                  <Td>{e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—'}</Td>
-                  <Td>{e.status}</Td>
-                  <Td>
-                    {e.statusDetails || ''}
+                  <Td className="text-center">
+                    <StatusDot status={e.status} />
+                  </Td>
+                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.item}</Td>
+                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.location || '—'}</Td>
+                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.assignedTo || '—'}</Td>
+                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.subcategory || '—'}</Td>
+                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—'}</Td>
+                  <Td className="relative text-center pr-6 print:pr-1 w-full print:w-auto">
+                    <span className="block max-w-[16rem] break-words print:max-w-none mx-auto">{e.statusDetails || ''}</span>
                     <HighlightButton
                       active={highlightedDetails.has(e.id)}
                       onClick={() => toggleDetailHighlight(e.id)}
-                      className="absolute right-[-2rem] top-1/2 -translate-y-1/2 print:hidden"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 print:hidden"
                     />
                   </Td>
                 </tr>
@@ -347,7 +361,7 @@ export default function Report() {
                     />
                   </Td>
                   <Td>
-                    <PurchaseInput
+                    <AutoGrowTextarea
                       value={row.reason}
                       onChange={(v) => updatePurchaseRow(row.id, 'reason', v)}
                       placeholder="e.g. Faster communication"
@@ -385,9 +399,33 @@ function Th({ children, className = '' }: { children: React.ReactNode; className
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <td className={`px-2 py-2 lg:px-3 text-slate-700 print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
+    <td className={`px-2 py-2 lg:px-3 align-top text-slate-700 print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
       {children}
     </td>
+  );
+}
+
+function StatusDot({ status }: { status: EquipmentStatus }) {
+  return (
+    <span
+      className={`inline-block h-2.5 w-2.5 rounded-full print:h-2 print:w-2 ${STATUS_DOT_COLORS[status]}`}
+      title={status}
+    >
+      <span className="sr-only">{status}</span>
+    </span>
+  );
+}
+
+function StatusLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 print:text-[9px] print:px-2 print:py-1">
+      {EQUIPMENT_STATUSES.map((status) => (
+        <span key={status} className="flex items-center gap-1 whitespace-nowrap">
+          <span className={`inline-block h-2.5 w-2.5 rounded-full print:h-2 print:w-2 ${STATUS_DOT_COLORS[status]}`} />
+          {status}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -404,11 +442,11 @@ function HighlightButton({
     <button
       type="button"
       onClick={onClick}
-      className={`${active ? 'text-orange-500 hover:text-orange-600' : 'text-slate-300 hover:text-orange-400'} ${className}`}
+      className={`${active ? 'text-sky-500 hover:text-sky-600' : 'text-slate-300 hover:text-sky-400'} ${className}`}
       aria-label={active ? 'Remove highlight' : 'Highlight row'}
       title={active ? 'Remove highlight' : 'Highlight row'}
     >
-      <svg viewBox="0 0 20 20" className="w-4 h-4" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
+      <svg viewBox="0 0 20 20" className="w-3 h-3" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -416,6 +454,44 @@ function HighlightButton({
         />
       </svg>
     </button>
+  );
+}
+
+function AutoGrowTextarea({
+  value,
+  onChange,
+  placeholder,
+  className = '',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  function resize(el: HTMLTextAreaElement | null) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
+  useEffect(() => {
+    resize(ref.current);
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      className={`w-full min-w-[6rem] resize-none overflow-hidden rounded-lg border border-slate-200 px-2 py-1 text-inherit leading-snug focus:outline-none focus:ring-2 focus:ring-primary-500 print:border-none print:p-0 print:ring-0 print:placeholder:text-transparent ${className}`}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        resize(e.target);
+      }}
+      placeholder={placeholder}
+      rows={1}
+    />
   );
 }
 
