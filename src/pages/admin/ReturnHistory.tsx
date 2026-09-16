@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { subscribeBorrowRequests } from '../../lib/borrowRequests';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 export default function ReturnHistory() {
   const { ministryId } = useActiveMinistry();
@@ -47,7 +48,7 @@ export default function ReturnHistory() {
                 <div className="text-xs text-slate-600">{row.borrower} · {row.ministry}</div>
                 <div className="text-xs text-slate-500">{row.venue}</div>
                 <div className="text-xs text-slate-400">
-                  {row.returnedAt ? new Date(row.returnedAt).toLocaleString() : '—'}
+                  {row.returnedAt ? formatDateTime(row.returnedAt) : '—'}
                 </div>
               </div>
             ))}
@@ -75,7 +76,7 @@ export default function ReturnHistory() {
                     <td className="py-2 pr-4 text-slate-600 hidden md:table-cell">{row.ministry}</td>
                     <td className="py-2 pr-4 text-slate-600 hidden lg:table-cell">{row.venue}</td>
                     <td className="py-2 pr-4 text-slate-400">
-                      {row.returnedAt ? new Date(row.returnedAt).toLocaleString() : '—'}
+                      {row.returnedAt ? formatDateTime(row.returnedAt) : '—'}
                     </td>
                   </tr>
                 ))}

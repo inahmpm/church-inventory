@@ -3,6 +3,7 @@ import { subscribeBorrowRequests } from '../../lib/borrowRequests';
 import { HISTORY_LOG_ACTION_COLORS, HISTORY_LOG_ACTION_LABELS } from '../../lib/historyLogs';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 export default function BorrowRequestHistory() {
   const { ministryId } = useActiveMinistry();
@@ -40,10 +41,10 @@ export default function BorrowRequestHistory() {
                 <div className="text-xs text-slate-500 truncate">Requested: {r.equipmentRequested}</div>
                 <div className="text-xs text-slate-400">{r.items.length} item(s)</div>
                 <div className="flex justify-between text-xs text-slate-400">
-                  <span>Submitted: {new Date(r.submittedAt).toLocaleString()}</span>
+                  <span>Submitted: {formatDateTime(r.submittedAt)}</span>
                   <span>
                     {r.status === 'denied' ? 'Denied' : 'Returned'}:{' '}
-                    {(r.returnedAt ?? r.deniedAt) ? new Date((r.returnedAt ?? r.deniedAt) as number).toLocaleString() : '—'}
+                    {(r.returnedAt ?? r.deniedAt) ? formatDateTime(r.returnedAt ?? r.deniedAt) : '—'}
                   </span>
                 </div>
               </div>
@@ -69,7 +70,7 @@ export default function BorrowRequestHistory() {
               <tbody className="divide-y divide-slate-100">
                 {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50">
-                    <Td className="whitespace-nowrap">{new Date(r.submittedAt).toLocaleString()}</Td>
+                    <Td className="whitespace-nowrap">{formatDateTime(r.submittedAt)}</Td>
                     <Td>{r.name}</Td>
                     <Td className="hidden lg:table-cell">{r.ministry}</Td>
                     <Td className="hidden lg:table-cell">
@@ -85,7 +86,7 @@ export default function BorrowRequestHistory() {
                       <StatusBadge status={r.status} />
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {(r.returnedAt ?? r.deniedAt) ? new Date((r.returnedAt ?? r.deniedAt) as number).toLocaleString() : '—'}
+                      {(r.returnedAt ?? r.deniedAt) ? formatDateTime(r.returnedAt ?? r.deniedAt) : '—'}
                     </Td>
                   </tr>
                 ))}
