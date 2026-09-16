@@ -14,6 +14,7 @@ import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
 import ExportInventoryModal from '../../components/ExportInventoryModal';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
+import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { printQrLabels } from '../../lib/printQrLabels';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
 
@@ -143,7 +144,7 @@ export default function Inventory() {
   const [exporting, setExporting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [subcategoryFilter, setSubcategoryFilter] = useState('');
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [assignedTypeFilter, setAssignedTypeFilter] = useState<'' | AssignedType>('');
   const [availabilityFilter, setAvailabilityFilter] = useState<'' | 'available' | 'borrowed'>('');
@@ -213,13 +214,9 @@ export default function Inventory() {
     [equipment, categoryFilter],
   );
 
-  const activeFilterCount = [
-    categoryFilter,
-    subcategoryFilter,
-    statusFilter,
-    assignedTypeFilter,
-    availabilityFilter,
-  ].filter(Boolean).length;
+  const activeFilterCount =
+    [categoryFilter, statusFilter, assignedTypeFilter, availabilityFilter].filter(Boolean).length +
+    (subcategoryFilter.length > 0 ? 1 : 0);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -244,7 +241,7 @@ export default function Inventory() {
         if (!matches) return false;
       }
       if (categoryFilter && e.category !== categoryFilter) return false;
-      if (subcategoryFilter && e.subcategory !== subcategoryFilter) return false;
+      if (subcategoryFilter.length > 0 && !subcategoryFilter.includes(e.subcategory)) return false;
       if (statusFilter && e.status !== statusFilter) return false;
       if (assignedTypeFilter && e.assignedType !== assignedTypeFilter) return false;
       if (availabilityFilter === 'available' && (e.assignedType !== 'Borrowable' || e.isBorrowed)) return false;
@@ -267,10 +264,11 @@ export default function Inventory() {
   }, [search, categoryFilter, subcategoryFilter, statusFilter, assignedTypeFilter, availabilityFilter, sortKey, sortDir]);
 
   useEffect(() => {
-    if (subcategoryFilter && !subcategoryFilterOptions.includes(subcategoryFilter)) {
-      setSubcategoryFilter('');
-    }
-  }, [subcategoryFilterOptions, subcategoryFilter]);
+    setSubcategoryFilter((prev) => {
+      const next = prev.filter((s) => subcategoryFilterOptions.includes(s));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [subcategoryFilterOptions]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -318,7 +316,7 @@ export default function Inventory() {
 
   function clearFilters() {
     setCategoryFilter('');
-    setSubcategoryFilter('');
+    setSubcategoryFilter([]);
     setStatusFilter('');
     setAssignedTypeFilter('');
     setAvailabilityFilter('');
@@ -469,19 +467,13 @@ export default function Inventory() {
                   </select>
                 </Field>
                 <Field label="Subcategory">
-                  <select
-                    className="input"
-                    value={subcategoryFilter}
-                    onChange={(e) => setSubcategoryFilter(e.target.value)}
+                  <MultiSelectDropdown
+                    label="subcategories"
+                    options={subcategoryFilterOptions}
+                    selected={subcategoryFilter}
+                    onChange={setSubcategoryFilter}
                     disabled={subcategoryFilterOptions.length === 0}
-                  >
-                    <option value="">All</option>
-                    {subcategoryFilterOptions.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Status">
                   <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
