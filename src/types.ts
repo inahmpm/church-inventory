@@ -70,6 +70,7 @@ export const TOGGLEABLE_EQUIPMENT_FIELDS = [
   { key: 'department', label: 'Department' },
   { key: 'ministry', label: 'Ministry' },
   { key: 'location', label: 'Location' },
+  { key: 'area', label: 'Area' },
   { key: 'purchaseDate', label: 'Purchase Date' },
   { key: 'statusDetails', label: 'Status Details' },
 ] as const;
@@ -99,6 +100,7 @@ export interface Equipment {
   department: string;
   ministry: string;
   location: string;
+  area: string;
   purchaseDate: string; // yyyy-mm-dd
   status: EquipmentStatus;
   statusDetails: string;

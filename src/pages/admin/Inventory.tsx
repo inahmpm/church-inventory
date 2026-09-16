@@ -30,6 +30,7 @@ type SortKey =
   | 'department'
   | 'ministry'
   | 'location'
+  | 'area'
   | 'purchaseDate'
   | 'status'
   | 'availability';
@@ -46,6 +47,7 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'department', label: 'Department', className: 'hidden lg:table-cell' },
   { key: 'ministry', label: 'Ministry', className: 'hidden lg:table-cell' },
   { key: 'location', label: 'Location', className: 'hidden lg:table-cell' },
+  { key: 'area', label: 'Area', className: 'hidden lg:table-cell' },
   { key: 'purchaseDate', label: 'Purchase Date', className: 'hidden xl:table-cell' },
   { key: 'status', label: 'Status' },
   { key: 'availability', label: 'Availability', className: 'hidden sm:table-cell' },
@@ -233,6 +235,7 @@ export default function Inventory() {
           e.department,
           e.ministry,
           e.location,
+          e.area,
           e.status,
         ]
           .join(' ')
@@ -662,6 +665,7 @@ export default function Inventory() {
                   )}
                   {isColumnVisible('ministry') && <Td className="hidden lg:table-cell">{e.ministry || '—'}</Td>}
                   {isColumnVisible('location') && <Td className="hidden lg:table-cell">{e.location || '—'}</Td>}
+                  {isColumnVisible('area') && <Td className="hidden lg:table-cell">{e.area || '—'}</Td>}
                   {isColumnVisible('purchaseDate') && (
                     <Td className="hidden xl:table-cell">{e.purchaseDate || '—'}</Td>
                   )}

@@ -251,6 +251,17 @@ export default function EquipmentPanel({
             </Field>
           )}
 
+          {!hiddenFields.includes('area') && (
+            <Field label="Area">
+              <input
+                className="input"
+                value={form.area}
+                onChange={(e) => setForm({ ...form, area: e.target.value })}
+                placeholder="e.g. Building A, Second Floor (optional)"
+              />
+            </Field>
+          )}
+
           {!hiddenFields.includes('purchaseDate') && (
             <Field label="Purchase Date">
               <input
@@ -412,6 +423,7 @@ function blankForm(ministryId: string, initial?: Equipment): NewEquipment {
     department: initial?.department ?? '',
     ministry: initial?.ministry ?? '',
     location: initial?.location ?? '',
+    area: initial?.area ?? '',
     purchaseDate: initial?.purchaseDate ?? '',
     status: initial?.status ?? 'Good Condition',
     statusDetails: initial?.statusDetails ?? '',
