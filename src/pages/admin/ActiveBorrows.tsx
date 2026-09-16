@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { markItemsReturned, subscribeBorrowRequests } from '../../lib/borrowRequests';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 export default function ActiveBorrows() {
   const { ministryId } = useActiveMinistry();
@@ -46,7 +47,7 @@ export default function ActiveBorrows() {
               <div className="text-xs text-slate-400 text-right">
                 Handed out
                 <br />
-                {r.fulfilledAt && new Date(r.fulfilledAt).toLocaleString()}
+                {r.fulfilledAt && formatDateTime(r.fulfilledAt)}
               </div>
             </div>
             <ul className="text-sm text-slate-600 divide-y divide-slate-100 mb-4">

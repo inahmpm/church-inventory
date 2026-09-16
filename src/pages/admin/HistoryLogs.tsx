@@ -7,6 +7,7 @@ import {
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import { HISTORY_LOG_ACTIONS } from '../../types';
 import type { HistoryLogAction, HistoryLogEntry } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 export default function HistoryLogs() {
   const { ministryId } = useActiveMinistry();
@@ -87,7 +88,7 @@ export default function HistoryLogs() {
                 <div className="text-xs font-mono text-slate-400">{log.inventoryCode}</div>
                 <div className="text-xs text-slate-600">{log.details}</div>
                 <div className="text-xs text-slate-400">
-                  {new Date(log.timestamp).toLocaleString()}
+                  {formatDateTime(log.timestamp)}
                   {log.actor ? ` · ${log.actor}` : ''}
                 </div>
               </div>
@@ -122,7 +123,7 @@ export default function HistoryLogs() {
                     </td>
                     <td className="py-2 pr-4 text-slate-600 hidden md:table-cell">{log.actor || '—'}</td>
                     <td className="py-2 pr-4 text-slate-400 whitespace-nowrap">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {formatDateTime(log.timestamp)}
                     </td>
                   </tr>
                 ))}
@@ -151,7 +152,7 @@ export default function HistoryLogs() {
             </div>
             <div className="text-sm text-slate-700 whitespace-pre-wrap">{selectedLog.details}</div>
             <div className="text-xs text-slate-400">
-              {new Date(selectedLog.timestamp).toLocaleString()}
+              {formatDateTime(selectedLog.timestamp)}
               {selectedLog.actor ? ` · ${selectedLog.actor}` : ''}
             </div>
             <div className="flex justify-end pt-1">

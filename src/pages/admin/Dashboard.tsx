@@ -4,6 +4,7 @@ import { subscribeBorrowRequests } from '../../lib/borrowRequests';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest, Equipment } from '../../types';
 import { EQUIPMENT_STATUSES } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 export default function Dashboard() {
   const { ministryId } = useActiveMinistry();
@@ -136,7 +137,7 @@ export default function Dashboard() {
                 <span className="text-slate-700">
                   {r.name} <span className="text-slate-400">— {r.ministry}</span>
                 </span>
-                <span className="text-slate-400">{new Date(r.submittedAt).toLocaleString()}</span>
+                <span className="text-slate-400">{formatDateTime(r.submittedAt)}</span>
               </li>
             ))}
           </ul>

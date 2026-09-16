@@ -3,6 +3,7 @@ import { subscribeEquipment } from '../../lib/equipment';
 import { createPullout, deletePullout, subscribePullouts } from '../../lib/equipmentPullouts';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { Equipment, EquipmentPullout } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 function IconPrinter() {
   return (
@@ -225,7 +226,7 @@ export default function EquipmentPulloutPage() {
                 </div>
                 <div className="text-xs text-slate-500">Area: {p.area}</div>
                 <div className="text-xs text-slate-500">
-                  Pulled out: {new Date(p.pulloutAt).toLocaleString()}
+                  Pulled out: {formatDateTime(p.pulloutAt)}
                 </div>
                 {p.actor && <div className="text-xs text-slate-400">By: {p.actor}</div>}
                 <div className="pt-1 print:hidden">
@@ -264,7 +265,7 @@ export default function EquipmentPulloutPage() {
                     <Td>{p.item}</Td>
                     <Td className="hidden md:table-cell print:table-cell font-mono text-xs">{p.inventoryCode}</Td>
                     <Td>{p.area}</Td>
-                    <Td className="whitespace-nowrap">{new Date(p.pulloutAt).toLocaleString()}</Td>
+                    <Td className="whitespace-nowrap">{formatDateTime(p.pulloutAt)}</Td>
                     <Td className="hidden lg:table-cell print:hidden">{p.actor ?? '—'}</Td>
                     <Td className="print:hidden">
                       <button

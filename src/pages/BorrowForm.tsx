@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { submitBorrowRequest } from '../lib/borrowRequests';
 import { getMinistryBySlug } from '../lib/ministries';
 import type { Ministry } from '../types';
+import { formatDateTime } from '../lib/date';
 
 const initialForm = {
   name: '',
@@ -61,7 +62,7 @@ export default function BorrowForm() {
           <div className="text-4xl mb-3">✅</div>
           <h1 className="text-xl font-semibold text-slate-800 mb-2">Request submitted</h1>
           <p className="text-slate-500 mb-1">
-            Submitted on {new Date(submittedAt).toLocaleString()}
+            Submitted on {formatDateTime(submittedAt)}
           </p>
           <p className="text-slate-500 mb-6">
             {ministry.name} has received your request. They'll reach out once your equipment is

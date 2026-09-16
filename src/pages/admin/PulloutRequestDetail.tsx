@@ -4,6 +4,7 @@ import { subscribeEquipment } from '../../lib/equipment';
 import { attachItems, removeAttachedItem, subscribePulloutItems, subscribePulloutRequest } from '../../lib/pulloutRequests';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { Equipment, PulloutItem, PulloutRequest } from '../../types';
+import { formatDateTime } from '../../lib/date';
 
 const STATUS_LABELS: Record<PulloutRequest['status'], string> = {
   draft: 'Draft',
@@ -160,8 +161,8 @@ export default function PulloutRequestDetail() {
           <div className="text-sm text-slate-500 mt-1 space-y-0.5">
             <div>Destination: {request.destination}</div>
             <div>
-              Pull-out: {new Date(request.pulloutAt).toLocaleString()} &middot; Return due:{' '}
-              {new Date(request.returnDueAt).toLocaleString()}
+              Pull-out: {formatDateTime(request.pulloutAt)} &middot; Return due:{' '}
+              {formatDateTime(request.returnDueAt)}
             </div>
             <div>
               Requestor: {request.requestorName}
@@ -294,10 +295,10 @@ export default function PulloutRequestDetail() {
                       )}
                     </Td>
                     <Td className="hidden md:table-cell text-xs text-slate-500">
-                      {item.scannedOutAt ? new Date(item.scannedOutAt).toLocaleString() : '—'}
+                      {item.scannedOutAt ? formatDateTime(item.scannedOutAt) : '—'}
                     </Td>
                     <Td className="hidden md:table-cell text-xs text-slate-500">
-                      {item.scannedInAt ? new Date(item.scannedInAt).toLocaleString() : '—'}
+                      {item.scannedInAt ? formatDateTime(item.scannedInAt) : '—'}
                     </Td>
                     <Td className="print:hidden">
                       {canEditItems && item.itemStatus === 'for_pullout' && (

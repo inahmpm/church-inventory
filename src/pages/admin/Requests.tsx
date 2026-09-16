@@ -9,6 +9,7 @@ import {
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { BorrowRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
+import { formatDateTime } from '../../lib/date';
 
 export default function Requests() {
   const { ministryId } = useActiveMinistry();
@@ -57,7 +58,7 @@ export default function Requests() {
             <div className="text-xs text-slate-500">{r.ministry} · {r.venue}</div>
             <div className="text-xs text-slate-500 truncate">{r.contactNo} · {r.email}</div>
             <div className="text-xs text-slate-500 truncate">Requested: {r.equipmentRequested}</div>
-            <div className="text-xs text-slate-400">{new Date(r.submittedAt).toLocaleString()}</div>
+            <div className="text-xs text-slate-400">{formatDateTime(r.submittedAt)}</div>
             <div className="flex items-center gap-3 pt-1">
               <button className="text-primary-600 hover:underline text-xs" onClick={() => setOpen(r)}>
                 {r.items.length ? 'Manage scan' : 'Scan equipment'}
@@ -93,7 +94,7 @@ export default function Requests() {
           <tbody className="divide-y divide-slate-100">
             {requests.map((r) => (
               <tr key={r.id} className="hover:bg-slate-50">
-                <Td className="whitespace-nowrap">{new Date(r.submittedAt).toLocaleString()}</Td>
+                <Td className="whitespace-nowrap">{formatDateTime(r.submittedAt)}</Td>
                 <Td>{r.name}</Td>
                 <Td className="hidden lg:table-cell">{r.ministry}</Td>
                 <Td className="hidden lg:table-cell">

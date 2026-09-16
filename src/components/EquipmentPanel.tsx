@@ -5,6 +5,7 @@ import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, visibleCustomFields } from '../type
 import type { AssignedType, Category, Equipment, EquipmentStatus, HistoryLogEntry, Ministry, NewEquipment } from '../types';
 import QrCodeLabel from './QrCodeLabel';
 import { printQrLabels } from '../lib/printQrLabels';
+import { formatDateTime } from '../lib/date';
 
 export default function EquipmentPanel({
   initial,
@@ -344,7 +345,7 @@ export default function EquipmentPanel({
                         {HISTORY_LOG_ACTION_LABELS[log.action]}
                       </span>
                       <span className="text-slate-400 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
+                        {formatDateTime(log.timestamp)}
                       </span>
                     </div>
                     <div className="mt-1 text-slate-600 line-clamp-2">{log.details}</div>
@@ -394,7 +395,7 @@ export default function EquipmentPanel({
             </div>
             <div className="text-sm text-slate-700 whitespace-pre-wrap">{selectedLog.details}</div>
             <div className="text-xs text-slate-400">
-              {new Date(selectedLog.timestamp).toLocaleString()}
+              {formatDateTime(selectedLog.timestamp)}
               {selectedLog.actor ? ` · ${selectedLog.actor}` : ''}
             </div>
             <div className="flex justify-end pt-1">

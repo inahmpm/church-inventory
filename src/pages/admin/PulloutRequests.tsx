@@ -13,6 +13,7 @@ import { useCurrentUser } from '../../lib/useCurrentUser';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import type { PulloutItem, PulloutRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
+import { formatDateTime } from '../../lib/date';
 
 function IconCancel() {
   return (
@@ -222,7 +223,7 @@ export default function PulloutRequests() {
                 </span>
               </div>
               <div className="text-xs text-slate-500">{r.destination}</div>
-              <div className="text-xs text-slate-500">Pull-out: {new Date(r.pulloutAt).toLocaleString()}</div>
+              <div className="text-xs text-slate-500">Pull-out: {formatDateTime(r.pulloutAt)}</div>
               <div className="text-xs text-slate-400">{r.itemCount} item(s)</div>
             </Link>
             <div className="flex items-center justify-end gap-1 pt-1 -mr-1.5">
@@ -267,8 +268,8 @@ export default function PulloutRequests() {
               <tr key={r.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigate(`/admin/pullout/${r.id}`)}>
                 <Td>{r.purpose}</Td>
                 <Td className="hidden md:table-cell">{r.destination}</Td>
-                <Td className="whitespace-nowrap">{new Date(r.pulloutAt).toLocaleString()}</Td>
-                <Td className="hidden lg:table-cell whitespace-nowrap">{new Date(r.returnDueAt).toLocaleString()}</Td>
+                <Td className="whitespace-nowrap">{formatDateTime(r.pulloutAt)}</Td>
+                <Td className="hidden lg:table-cell whitespace-nowrap">{formatDateTime(r.returnDueAt)}</Td>
                 <Td>{r.itemCount}</Td>
                 <Td>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
@@ -376,7 +377,7 @@ function ScanPanel({ request, onClose }: { request: PulloutRequest; onClose: () 
         <div>
           <h2 className="font-semibold text-slate-800 text-lg">{request.purpose}</h2>
           <p className="text-sm text-slate-500">
-            {request.destination} &middot; Pull-out {new Date(request.pulloutAt).toLocaleString()}
+            {request.destination} &middot; Pull-out {formatDateTime(request.pulloutAt)}
           </p>
         </div>
 

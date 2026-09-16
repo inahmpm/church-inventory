@@ -7,6 +7,7 @@ import type { Category, Equipment, EquipmentStatus } from '../../types';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
 import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
+import { formatDate } from '../../lib/date';
 
 const DETAIL_COLUMNS: { id: string; label: string; widthClass: string }[] = [
   { id: 'status', label: 'Status', widthClass: 'print:w-[5%]' },
@@ -26,7 +27,7 @@ const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'For Disposal': 'bg-red-500',
 };
 
-const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+const today = formatDate(new Date());
 
 // Tailwind's JIT scanner needs literal class strings, so widths for a
 // variable number of custom field columns are picked from this fixed list
@@ -486,7 +487,7 @@ function detailCellContent(e: Equipment, columnId: string) {
     case 'subcategory':
       return e.subcategory || '—';
     case 'purchaseDate':
-      return e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—';
+      return formatDate(e.purchaseDate);
     default:
       return null;
   }

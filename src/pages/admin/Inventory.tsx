@@ -17,6 +17,7 @@ import ColumnPickerButton from '../../components/ColumnPickerButton';
 import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { printQrLabels } from '../../lib/printQrLabels';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
+import { formatDate } from '../../lib/date';
 
 const PAGE_SIZE = 20;
 
@@ -659,7 +660,7 @@ export default function Inventory() {
                   {isColumnVisible('location') && <Td className="hidden lg:table-cell">{e.location || '—'}</Td>}
                   {isColumnVisible('area') && <Td className="hidden lg:table-cell">{e.area || '—'}</Td>}
                   {isColumnVisible('purchaseDate') && (
-                    <Td className="hidden xl:table-cell">{e.purchaseDate || '—'}</Td>
+                    <Td className="hidden xl:table-cell">{formatDate(e.purchaseDate)}</Td>
                   )}
                   {isColumnVisible('status') && (
                     <Td>
