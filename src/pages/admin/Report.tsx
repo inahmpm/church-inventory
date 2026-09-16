@@ -2,21 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { EQUIPMENT_STATUSES, visibleCustomFields } from '../../types';
+import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue } from '../../types';
 import type { Category, Equipment, EquipmentStatus } from '../../types';
+import ColumnPickerButton from '../../components/ColumnPickerButton';
+import { useColumnVisibility } from '../../lib/useColumnVisibility';
 
-function customFieldsSummary(e: Equipment, categories: Category[]) {
-  const defs = visibleCustomFields(categories.find((c) => c.name === e.category));
-  const parts = defs
-    .map((def) => {
-      const value = e.customFields?.[def.id];
-      if (!value) return null;
-      const display = def.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
-      return `${def.name}: ${display}`;
-    })
-    .filter((s): s is string => Boolean(s));
-  return parts.length > 0 ? parts.join(', ') : '—';
-}
+const DETAIL_COLUMNS: { id: string; label: string; widthClass: string }[] = [
+  { id: 'status', label: 'Status', widthClass: 'print:w-[5%]' },
+  { id: 'item', label: 'Items', widthClass: 'print:w-[17%]' },
+  { id: 'location', label: 'Location', widthClass: 'print:w-[12%]' },
+  { id: 'assignedTo', label: 'Assigned to', widthClass: 'print:w-[15%]' },
+  { id: 'role', label: 'Role', widthClass: 'print:w-[9%]' },
+  { id: 'purchaseDate', label: 'Purchase Date', widthClass: 'print:w-[10%]' },
+];
 
 const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'Good Condition': 'bg-green-500',
@@ -27,6 +25,14 @@ const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
 };
 
 const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+// Tailwind's JIT scanner needs literal class strings, so widths for a
+// variable number of custom field columns are picked from this fixed list
+// rather than built with a template string.
+const CUSTOM_FIELD_COL_WIDTHS = ['print:w-[20%]', 'print:w-[10%]', 'print:w-[7%]', 'print:w-[5%]'];
+function customFieldColWidthClass(count: number) {
+  return CUSTOM_FIELD_COL_WIDTHS[Math.min(count, CUSTOM_FIELD_COL_WIDTHS.length) - 1] ?? 'print:w-[4%]';
+}
 
 interface PurchaseRow {
   id: number;
@@ -122,6 +128,32 @@ export default function Report() {
     [filtered],
   );
 
+  const customCols = useMemo(() => customFieldColumns(categoryDefs), [categoryDefs]);
+
+  const { isVisible: isColumnVisible, toggle: toggleColumn, showAll: showAllColumns } = useColumnVisibility(
+    'report-columns',
+  );
+
+  const columnPickerOptions = useMemo(
+    () => [
+      ...DETAIL_COLUMNS.map((col) => ({ id: col.id, label: col.label })),
+      ...customCols.map((col) => ({ id: col.id, label: col.name })),
+      { id: 'notes', label: 'Notes' },
+    ],
+    [customCols],
+  );
+
+  const visibleDetailColumns = useMemo(
+    () => DETAIL_COLUMNS.filter((col) => isColumnVisible(col.id)),
+    [isColumnVisible],
+  );
+  const visibleCustomCols = useMemo(
+    () => customCols.filter((col) => isColumnVisible(col.id)),
+    [customCols, isColumnVisible],
+  );
+  const notesVisible = isColumnVisible('notes');
+  const totalDetailColumns = visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0);
+
   const summaryRows = useMemo(() => {
     const byItem = new Map<string, Record<string, number>>();
     for (const e of filtered) {
@@ -170,6 +202,12 @@ export default function Report() {
               </option>
             ))}
           </select>
+          <ColumnPickerButton
+            columns={columnPickerOptions}
+            isVisible={isColumnVisible}
+            onToggle={toggleColumn}
+            onShowAll={showAllColumns}
+          />
           <button className="btn-primary whitespace-nowrap" onClick={() => window.print()}>
             Print / Save as PDF
           </button>
@@ -210,25 +248,30 @@ export default function Report() {
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-slate-200">
             <colgroup>
-              <col className="print:w-[5%]" />
-              <col className="print:w-[17%]" />
-              <col className="print:w-[12%]" />
-              <col className="print:w-[15%]" />
-              <col className="print:w-[9%]" />
-              <col className="print:w-[10%]" />
-              <col className="print:w-[15%]" />
-              <col className="print:w-[17%]" />
+              {visibleDetailColumns.map((col) => (
+                <col key={col.id} className={col.widthClass} />
+              ))}
+              {visibleCustomCols.map((col) => (
+                <col key={col.id} className={customFieldColWidthClass(visibleCustomCols.length)} />
+              ))}
+              {notesVisible && <col className="print:w-auto" />}
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
-                <Th className="!whitespace-normal text-center">Status</Th>
-                <Th className="text-center print:!whitespace-normal">Items</Th>
-                <Th className="text-center print:!whitespace-normal">Location</Th>
-                <Th className="text-center print:!whitespace-normal">Assigned to</Th>
-                <Th className="text-center print:!whitespace-normal">Role</Th>
-                <Th className="text-center print:!whitespace-normal">Purchase Date</Th>
-                <Th className="text-center print:!whitespace-normal">Custom Fields</Th>
-                <Th className="!whitespace-normal text-center w-full print:w-auto">Notes</Th>
+                {visibleDetailColumns.map((col) => (
+                  <Th
+                    key={col.id}
+                    className={col.id === 'status' ? '!whitespace-normal text-center' : 'text-center print:!whitespace-normal'}
+                  >
+                    {col.label}
+                  </Th>
+                ))}
+                {visibleCustomCols.map((col) => (
+                  <Th key={col.id} className="text-center print:!whitespace-normal">
+                    {col.name}
+                  </Th>
+                ))}
+                {notesVisible && <Th className="!whitespace-normal text-center w-full print:w-auto">Notes</Th>}
               </tr>
             </thead>
             <tbody>
@@ -239,28 +282,31 @@ export default function Report() {
                     highlightedDetails.has(e.id) ? 'bg-sky-100 print:bg-sky-100' : ''
                   }`}
                 >
-                  <Td className="text-center">
-                    <StatusDot status={e.status} />
-                  </Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.item}</Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.location || '—'}</Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.assignedTo || '—'}</Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.subcategory || '—'}</Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—'}</Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{customFieldsSummary(e, categoryDefs)}</Td>
-                  <Td className="relative text-center pr-6 print:pr-1 w-full print:w-auto">
-                    <span className="block max-w-[16rem] break-words print:max-w-none mx-auto">{e.statusDetails || ''}</span>
-                    <HighlightButton
-                      active={highlightedDetails.has(e.id)}
-                      onClick={() => toggleDetailHighlight(e.id)}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 print:hidden"
-                    />
-                  </Td>
+                  {visibleDetailColumns.map((col) => (
+                    <Td key={col.id} className="text-center whitespace-nowrap print:whitespace-normal print:break-words">
+                      {detailCellContent(e, col.id)}
+                    </Td>
+                  ))}
+                  {visibleCustomCols.map((col) => (
+                    <Td key={col.id} className="text-center whitespace-nowrap print:whitespace-normal print:break-words">
+                      {customFieldValue(e, categoryDefs, col)}
+                    </Td>
+                  ))}
+                  {notesVisible && (
+                    <Td className="relative text-center pr-6 print:pr-1 w-full print:w-auto">
+                      <span className="block max-w-[16rem] break-words print:max-w-none mx-auto">{e.statusDetails || ''}</span>
+                      <HighlightButton
+                        active={highlightedDetails.has(e.id)}
+                        onClick={() => toggleDetailHighlight(e.id)}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 print:hidden"
+                      />
+                    </Td>
+                  )}
                 </tr>
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center text-slate-400 py-6">
+                  <td colSpan={totalDetailColumns} className="text-center text-slate-400 py-6">
                     No equipment found for this filter.
                   </td>
                 </tr>
@@ -407,6 +453,25 @@ export default function Report() {
       </div>
     </div>
   );
+}
+
+function detailCellContent(e: Equipment, columnId: string) {
+  switch (columnId) {
+    case 'status':
+      return <StatusDot status={e.status} />;
+    case 'item':
+      return e.item;
+    case 'location':
+      return e.location || '—';
+    case 'assignedTo':
+      return e.assignedTo || '—';
+    case 'role':
+      return e.subcategory || '—';
+    case 'purchaseDate':
+      return e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—';
+    default:
+      return null;
+  }
 }
 
 function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {

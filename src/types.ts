@@ -121,6 +121,30 @@ export function visibleCustomFields(category: Category | undefined): CustomField
   return category.customFields;
 }
 
+// One table/report column per distinct custom field name in use across the
+// given categories, so each user-created field (e.g. "Cable Length") gets
+// its own column rather than being bundled into one generic column.
+export function customFieldColumns(categories: Category[]): CustomFieldDefinition[] {
+  const byName = new Map<string, CustomFieldDefinition>();
+  for (const c of categories) {
+    for (const def of visibleCustomFields(c)) {
+      const key = def.name.toLowerCase();
+      if (!byName.has(key)) byName.set(key, def);
+    }
+  }
+  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function customFieldValue(equipment: Equipment, categories: Category[], column: CustomFieldDefinition): string {
+  const def = visibleCustomFields(categories.find((c) => c.name === equipment.category)).find(
+    (f) => f.name.toLowerCase() === column.name.toLowerCase(),
+  );
+  if (!def) return '—';
+  const value = equipment.customFields?.[def.id];
+  if (!value) return '—';
+  return def.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
+}
+
 export type NewEquipment = Omit<
   Equipment,
   | 'id'
