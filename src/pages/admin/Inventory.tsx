@@ -13,7 +13,9 @@ import type { AssignedType, Category, Equipment, NewEquipment } from '../../type
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
 import ExportInventoryModal from '../../components/ExportInventoryModal';
+import ColumnPickerButton from '../../components/ColumnPickerButton';
 import { printQrLabels } from '../../lib/printQrLabels';
+import { useColumnVisibility } from '../../lib/useColumnVisibility';
 
 const PAGE_SIZE = 20;
 
@@ -174,6 +176,27 @@ export default function Inventory() {
   );
 
   const customFieldCols = useMemo(() => customFieldColumns(categories), [categories]);
+
+  const { isVisible: isColumnVisible, toggle: toggleColumn, showAll: showAllColumns } = useColumnVisibility(
+    'inventory-columns',
+  );
+
+  const columnPickerOptions = useMemo(
+    () => [
+      ...COLUMNS.map((col) => ({ id: col.key, label: col.label })),
+      { id: 'statusDetails', label: 'Status Details' },
+      ...customFieldCols.map((col) => ({ id: col.id, label: col.name })),
+    ],
+    [customFieldCols],
+  );
+
+  const visibleColumns = useMemo(() => COLUMNS.filter((col) => isColumnVisible(col.key)), [isColumnVisible]);
+  const visibleCustomFieldCols = useMemo(
+    () => customFieldCols.filter((col) => isColumnVisible(col.id)),
+    [customFieldCols, isColumnVisible],
+  );
+  const totalTableColumns =
+    1 + visibleColumns.length + (isColumnVisible('statusDetails') ? 1 : 0) + visibleCustomFieldCols.length;
 
   const subcategoryFilterOptions = useMemo(
     () =>
@@ -500,6 +523,12 @@ export default function Inventory() {
               </div>
             )}
           </div>
+          <ColumnPickerButton
+            columns={columnPickerOptions}
+            isVisible={isColumnVisible}
+            onToggle={toggleColumn}
+            onShowAll={showAllColumns}
+          />
           <button
             className="btn-secondary whitespace-nowrap inline-flex items-center gap-1.5"
             onClick={() => setImporting(true)}
@@ -581,7 +610,7 @@ export default function Inventory() {
                   onChange={togglePageSelected}
                 />
               </Th>
-              {COLUMNS.map((col) => (
+              {visibleColumns.map((col) => (
                 <Th key={col.key} className={col.className} onClick={() => toggleSort(col.key)}>
                   <span className="inline-flex items-center gap-1">
                     {col.label}
@@ -589,8 +618,8 @@ export default function Inventory() {
                   </span>
                 </Th>
               ))}
-              <Th className="hidden xl:table-cell">Status Details</Th>
-              {customFieldCols.map((col) => (
+              {isColumnVisible('statusDetails') && <Th className="hidden xl:table-cell">Status Details</Th>}
+              {visibleCustomFieldCols.map((col) => (
                 <Th key={col.id} className="hidden xl:table-cell">
                   {col.name}
                 </Th>
@@ -615,25 +644,41 @@ export default function Inventory() {
                       onChange={() => toggleSelected(e.id)}
                     />
                   </Td>
-                  <Td>{e.category}</Td>
-                  <Td className="hidden md:table-cell">{e.subcategory || '—'}</Td>
-                  <Td className="font-mono">{e.inventoryCode}</Td>
-                  <Td>{e.item}</Td>
-                  <Td className="hidden lg:table-cell font-mono">{e.serialNumber || '—'}</Td>
-                  <Td>{e.assignedType}</Td>
-                  <Td className="hidden md:table-cell">{e.assignedTo || '—'}</Td>
-                  <Td className="hidden lg:table-cell">{e.department || '—'}</Td>
-                  <Td className="hidden lg:table-cell">{e.ministry || '—'}</Td>
-                  <Td className="hidden lg:table-cell">{e.location || '—'}</Td>
-                  <Td className="hidden xl:table-cell">{e.purchaseDate || '—'}</Td>
-                  <Td>
-                    <StatusBadge status={e.status} />
-                  </Td>
-                  <Td className="hidden sm:table-cell">{availabilityLabel(e)}</Td>
-                  <Td className="hidden xl:table-cell max-w-xs truncate" title={e.statusDetails}>
-                    {e.statusDetails || '—'}
-                  </Td>
-                  {customFieldCols.map((col) => (
+                  {isColumnVisible('category') && <Td>{e.category}</Td>}
+                  {isColumnVisible('subcategory') && (
+                    <Td className="hidden md:table-cell">{e.subcategory || '—'}</Td>
+                  )}
+                  {isColumnVisible('inventoryCode') && <Td className="font-mono">{e.inventoryCode}</Td>}
+                  {isColumnVisible('item') && <Td>{e.item}</Td>}
+                  {isColumnVisible('serialNumber') && (
+                    <Td className="hidden lg:table-cell font-mono">{e.serialNumber || '—'}</Td>
+                  )}
+                  {isColumnVisible('assignedType') && <Td>{e.assignedType}</Td>}
+                  {isColumnVisible('assignedTo') && (
+                    <Td className="hidden md:table-cell">{e.assignedTo || '—'}</Td>
+                  )}
+                  {isColumnVisible('department') && (
+                    <Td className="hidden lg:table-cell">{e.department || '—'}</Td>
+                  )}
+                  {isColumnVisible('ministry') && <Td className="hidden lg:table-cell">{e.ministry || '—'}</Td>}
+                  {isColumnVisible('location') && <Td className="hidden lg:table-cell">{e.location || '—'}</Td>}
+                  {isColumnVisible('purchaseDate') && (
+                    <Td className="hidden xl:table-cell">{e.purchaseDate || '—'}</Td>
+                  )}
+                  {isColumnVisible('status') && (
+                    <Td>
+                      <StatusBadge status={e.status} />
+                    </Td>
+                  )}
+                  {isColumnVisible('availability') && (
+                    <Td className="hidden sm:table-cell">{availabilityLabel(e)}</Td>
+                  )}
+                  {isColumnVisible('statusDetails') && (
+                    <Td className="hidden xl:table-cell max-w-xs truncate" title={e.statusDetails}>
+                      {e.statusDetails || '—'}
+                    </Td>
+                  )}
+                  {visibleCustomFieldCols.map((col) => (
                     <Td key={col.id} className="hidden xl:table-cell">
                       {customFieldValue(e, categories, col)}
                     </Td>
@@ -643,7 +688,7 @@ export default function Inventory() {
             })}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={15 + customFieldCols.length} className="text-center text-slate-400 py-8">
+                <td colSpan={totalTableColumns} className="text-center text-slate-400 py-8">
                   No equipment found.
                 </td>
               </tr>
