@@ -2,21 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { EQUIPMENT_STATUSES, visibleCustomFields } from '../../types';
+import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue } from '../../types';
 import type { Category, Equipment, EquipmentStatus } from '../../types';
-
-function customFieldsSummary(e: Equipment, categories: Category[]) {
-  const defs = visibleCustomFields(categories.find((c) => c.name === e.category));
-  const parts = defs
-    .map((def) => {
-      const value = e.customFields?.[def.id];
-      if (!value) return null;
-      const display = def.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
-      return `${def.name}: ${display}`;
-    })
-    .filter((s): s is string => Boolean(s));
-  return parts.length > 0 ? parts.join(', ') : '—';
-}
 
 const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'Good Condition': 'bg-green-500',
@@ -27,6 +14,14 @@ const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
 };
 
 const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+// Tailwind's JIT scanner needs literal class strings, so widths for a
+// variable number of custom field columns are picked from this fixed list
+// rather than built with a template string.
+const CUSTOM_FIELD_COL_WIDTHS = ['print:w-[20%]', 'print:w-[10%]', 'print:w-[7%]', 'print:w-[5%]'];
+function customFieldColWidthClass(count: number) {
+  return CUSTOM_FIELD_COL_WIDTHS[Math.min(count, CUSTOM_FIELD_COL_WIDTHS.length) - 1] ?? 'print:w-[4%]';
+}
 
 interface PurchaseRow {
   id: number;
@@ -122,6 +117,8 @@ export default function Report() {
     [filtered],
   );
 
+  const customCols = useMemo(() => customFieldColumns(categoryDefs), [categoryDefs]);
+
   const summaryRows = useMemo(() => {
     const byItem = new Map<string, Record<string, number>>();
     for (const e of filtered) {
@@ -216,8 +213,10 @@ export default function Report() {
               <col className="print:w-[15%]" />
               <col className="print:w-[9%]" />
               <col className="print:w-[10%]" />
-              <col className="print:w-[15%]" />
-              <col className="print:w-[17%]" />
+              {customCols.map((col) => (
+                <col key={col.id} className={customFieldColWidthClass(customCols.length)} />
+              ))}
+              <col className="print:w-auto" />
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
@@ -227,7 +226,11 @@ export default function Report() {
                 <Th className="text-center print:!whitespace-normal">Assigned to</Th>
                 <Th className="text-center print:!whitespace-normal">Role</Th>
                 <Th className="text-center print:!whitespace-normal">Purchase Date</Th>
-                <Th className="text-center print:!whitespace-normal">Custom Fields</Th>
+                {customCols.map((col) => (
+                  <Th key={col.id} className="text-center print:!whitespace-normal">
+                    {col.name}
+                  </Th>
+                ))}
                 <Th className="!whitespace-normal text-center w-full print:w-auto">Notes</Th>
               </tr>
             </thead>
@@ -247,7 +250,11 @@ export default function Report() {
                   <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.assignedTo || '—'}</Td>
                   <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.subcategory || '—'}</Td>
                   <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—'}</Td>
-                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{customFieldsSummary(e, categoryDefs)}</Td>
+                  {customCols.map((col) => (
+                    <Td key={col.id} className="text-center whitespace-nowrap print:whitespace-normal print:break-words">
+                      {customFieldValue(e, categoryDefs, col)}
+                    </Td>
+                  ))}
                   <Td className="relative text-center pr-6 print:pr-1 w-full print:w-auto">
                     <span className="block max-w-[16rem] break-words print:max-w-none mx-auto">{e.statusDetails || ''}</span>
                     <HighlightButton
@@ -260,7 +267,7 @@ export default function Report() {
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center text-slate-400 py-6">
+                  <td colSpan={7 + customCols.length} className="text-center text-slate-400 py-6">
                     No equipment found for this filter.
                   </td>
                 </tr>
