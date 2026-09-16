@@ -59,6 +59,14 @@ function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
   return next;
 }
 
+function IconFilter() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M4 5h16l-6 7v6l-4 2v-8z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function Report() {
   const { ministryId } = useActiveMinistry();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -66,6 +74,14 @@ export default function Report() {
   const [section, setSection] = useState('Technology');
   const [category, setCategory] = useState('All');
   const [subcategory, setSubcategory] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [locationFilter, setLocationFilter] = useState<string[]>([]);
+  const [areaFilter, setAreaFilter] = useState<string[]>([]);
+  const [assignedToFilter, setAssignedToFilter] = useState<string[]>([]);
+  const [sortKey, setSortKey] = useState('location');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const filterRef = useRef<HTMLDivElement>(null);
   const nextRowId = useRef(1);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([emptyPurchaseRow(0)]);
   const [highlightedDetails, setHighlightedDetails] = useState<Set<string>>(new Set());
@@ -94,6 +110,16 @@ export default function Report() {
     if (!ministryId) return;
     return subscribeCategories(ministryId, setCategoryDefs);
   }, [ministryId]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setShowFilters(false);
+      }
+    }
+    if (showFilters) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
 
   const categories = useMemo(
     () => Array.from(new Set(equipment.map((e) => e.category))).sort(),
@@ -125,22 +151,97 @@ export default function Report() {
     });
   }, [subcategories]);
 
+  const statusOptions = useMemo(
+    () => Array.from(new Set(equipment.map((e) => e.status))).sort(),
+    [equipment],
+  );
+  const locationOptions = useMemo(
+    () => Array.from(new Set(equipment.map((e) => e.location).filter(Boolean))).sort(),
+    [equipment],
+  );
+  const areaOptions = useMemo(
+    () => Array.from(new Set(equipment.map((e) => e.area).filter(Boolean))).sort(),
+    [equipment],
+  );
+  const assignedToOptions = useMemo(
+    () => Array.from(new Set(equipment.map((e) => e.assignedTo).filter(Boolean))).sort(),
+    [equipment],
+  );
+
+  const activeFilterCount =
+    (category !== 'All' ? 1 : 0) +
+    (subcategory.length > 0 ? 1 : 0) +
+    (statusFilter.length > 0 ? 1 : 0) +
+    (locationFilter.length > 0 ? 1 : 0) +
+    (areaFilter.length > 0 ? 1 : 0) +
+    (assignedToFilter.length > 0 ? 1 : 0);
+
+  function clearFilters() {
+    handleCategoryChange('All');
+    setStatusFilter([]);
+    setLocationFilter([]);
+    setAreaFilter([]);
+    setAssignedToFilter([]);
+  }
+
   const filtered = useMemo(
     () =>
       equipment
         .filter((e) => category === 'All' || e.category === category)
-        .filter((e) => subcategory.length === 0 || subcategory.includes(e.subcategory)),
-    [equipment, category, subcategory],
+        .filter((e) => subcategory.length === 0 || subcategory.includes(e.subcategory))
+        .filter((e) => statusFilter.length === 0 || statusFilter.includes(e.status))
+        .filter((e) => locationFilter.length === 0 || locationFilter.includes(e.location))
+        .filter((e) => areaFilter.length === 0 || areaFilter.includes(e.area))
+        .filter((e) => assignedToFilter.length === 0 || assignedToFilter.includes(e.assignedTo)),
+    [equipment, category, subcategory, statusFilter, locationFilter, areaFilter, assignedToFilter],
   );
-
-  const sorted = useMemo(
-    () => [...filtered].sort((a, b) => a.location.localeCompare(b.location) || a.item.localeCompare(b.item)),
-    [filtered],
-  );
-
-  const subcategoryLabel = subcategory.length === 0 ? 'All' : subcategory.join(', ');
 
   const customCols = useMemo(() => customFieldColumns(categoryDefs), [categoryDefs]);
+
+  function sortValue(e: Equipment, key: string): string {
+    switch (key) {
+      case 'status':
+        return e.status;
+      case 'subcategory':
+        return e.subcategory || '';
+      case 'item':
+        return e.item || '';
+      case 'location':
+        return e.location || '';
+      case 'area':
+        return e.area || '';
+      case 'assignedTo':
+        return e.assignedTo || '';
+      case 'purchaseDate':
+        return e.purchaseDate || '';
+      case 'notes':
+        return e.statusDetails || '';
+      default: {
+        const col = customCols.find((c) => c.id === key);
+        return col ? customFieldValue(e, categoryDefs, col) : '';
+      }
+    }
+  }
+
+  function toggleSort(key: string) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  const sorted = useMemo(() => {
+    const dirMult = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const cmp = sortValue(a, sortKey).localeCompare(sortValue(b, sortKey));
+      return cmp !== 0 ? cmp * dirMult : a.item.localeCompare(b.item);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortDir, customCols, categoryDefs]);
+
+  const subcategoryLabel = subcategory.length === 0 ? 'All' : subcategory.join(', ');
 
   const { isVisible: isColumnVisible, toggle: toggleColumn, showAll: showAllColumns } = useColumnVisibility(
     'report-columns',
@@ -198,22 +299,87 @@ export default function Report() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <h1 className="text-xl font-semibold text-slate-800">Generate Report</h1>
         <div className="flex flex-wrap gap-2">
-          <select className="input w-auto" value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
-            <option value="All">All categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <MultiSelectDropdown
-            label="sub categories"
-            options={subcategories}
-            selected={subcategory}
-            onChange={setSubcategory}
-            disabled={subcategories.length === 0}
-            className="w-auto min-w-[10rem]"
-          />
+          <div className="relative" ref={filterRef}>
+            <button
+              type="button"
+              className="btn-secondary whitespace-nowrap relative inline-flex items-center gap-1.5"
+              onClick={() => setShowFilters((v) => !v)}
+              title="Filter"
+              aria-label="Filter"
+            >
+              <IconFilter />
+              <span className="hidden md:inline">Filter</span>
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] w-4 h-4 align-middle">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            {showFilters && (
+              <div className="absolute right-0 mt-2 w-64 card p-4 space-y-3 z-30 shadow-lg">
+                <Field label="Category">
+                  <select className="input" value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
+                    <option value="All">All categories</option>
+                    {categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Sub Category">
+                  <MultiSelectDropdown
+                    label="sub categories"
+                    options={subcategories}
+                    selected={subcategory}
+                    onChange={setSubcategory}
+                    disabled={subcategories.length === 0}
+                  />
+                </Field>
+                <Field label="Status">
+                  <MultiSelectDropdown
+                    label="statuses"
+                    options={statusOptions}
+                    selected={statusFilter}
+                    onChange={setStatusFilter}
+                    disabled={statusOptions.length === 0}
+                  />
+                </Field>
+                <Field label="Location">
+                  <MultiSelectDropdown
+                    label="locations"
+                    options={locationOptions}
+                    selected={locationFilter}
+                    onChange={setLocationFilter}
+                    disabled={locationOptions.length === 0}
+                  />
+                </Field>
+                <Field label="Area">
+                  <MultiSelectDropdown
+                    label="areas"
+                    options={areaOptions}
+                    selected={areaFilter}
+                    onChange={setAreaFilter}
+                    disabled={areaOptions.length === 0}
+                  />
+                </Field>
+                <Field label="Assigned To">
+                  <MultiSelectDropdown
+                    label="assignees"
+                    options={assignedToOptions}
+                    selected={assignedToFilter}
+                    onChange={setAssignedToFilter}
+                    disabled={assignedToOptions.length === 0}
+                  />
+                </Field>
+                <div className="flex justify-end">
+                  <button type="button" className="text-xs text-slate-500 hover:underline" onClick={clearFilters}>
+                    Clear filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <ColumnPickerButton
             columns={columnPickerOptions}
             isVisible={isColumnVisible}
@@ -274,16 +440,30 @@ export default function Report() {
                   <Th
                     key={col.id}
                     className={col.id === 'status' ? '!whitespace-normal text-center' : 'text-left print:!whitespace-normal'}
+                    onClick={() => toggleSort(col.id)}
                   >
-                    {col.label}
+                    <span className="inline-flex items-center gap-1">
+                      {col.label}
+                      <SortIndicator active={sortKey === col.id} dir={sortDir} />
+                    </span>
                   </Th>
                 ))}
                 {visibleCustomCols.map((col) => (
-                  <Th key={col.id} className="text-left print:!whitespace-normal">
-                    {col.name}
+                  <Th key={col.id} className="text-left print:!whitespace-normal" onClick={() => toggleSort(col.id)}>
+                    <span className="inline-flex items-center gap-1">
+                      {col.name}
+                      <SortIndicator active={sortKey === col.id} dir={sortDir} />
+                    </span>
                   </Th>
                 ))}
-                {notesVisible && <Th className="!whitespace-normal text-left w-full print:w-auto">Notes</Th>}
+                {notesVisible && (
+                  <Th className="!whitespace-normal text-left w-full print:w-auto" onClick={() => toggleSort('notes')}>
+                    <span className="inline-flex items-center gap-1">
+                      Notes
+                      <SortIndicator active={sortKey === 'notes'} dir={sortDir} />
+                    </span>
+                  </Th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -493,14 +673,38 @@ function detailCellContent(e: Equipment, columnId: string) {
   }
 }
 
-function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-slate-700 mb-1">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Th({
+  children,
+  className = '',
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
   return (
     <th
-      className={`px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${className}`}
+      className={`px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${
+        onClick ? 'cursor-pointer select-none hover:text-slate-900' : ''
+      } ${className}`}
+      onClick={onClick}
     >
       {children}
     </th>
   );
+}
+
+function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  return <span className="text-[10px] text-slate-400 print:hidden">{active ? (dir === 'asc' ? '▲' : '▼') : ''}</span>;
 }
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
