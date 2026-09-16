@@ -5,15 +5,16 @@ import { useActiveMinistry } from '../../lib/MinistryContext';
 import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue } from '../../types';
 import type { Category, Equipment, EquipmentStatus } from '../../types';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
+import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
 
 const DETAIL_COLUMNS: { id: string; label: string; widthClass: string }[] = [
   { id: 'status', label: 'Status', widthClass: 'print:w-[5%]' },
+  { id: 'subcategory', label: 'Sub Category', widthClass: 'print:w-[9%]' },
   { id: 'item', label: 'Items', widthClass: 'print:w-[17%]' },
   { id: 'location', label: 'Location', widthClass: 'print:w-[12%]' },
   { id: 'area', label: 'Area', widthClass: 'print:w-[12%]' },
   { id: 'assignedTo', label: 'Assigned to', widthClass: 'print:w-[15%]' },
-  { id: 'role', label: 'Role', widthClass: 'print:w-[9%]' },
   { id: 'purchaseDate', label: 'Purchase Date', widthClass: 'print:w-[10%]' },
 ];
 
@@ -63,7 +64,7 @@ export default function Report() {
   const [categoryDefs, setCategoryDefs] = useState<Category[]>([]);
   const [section, setSection] = useState('Technology');
   const [category, setCategory] = useState('All');
-  const [subcategory, setSubcategory] = useState('All');
+  const [subcategory, setSubcategory] = useState<string[]>([]);
   const nextRowId = useRef(1);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([emptyPurchaseRow(0)]);
   const [highlightedDetails, setHighlightedDetails] = useState<Set<string>>(new Set());
@@ -113,14 +114,21 @@ export default function Report() {
 
   function handleCategoryChange(value: string) {
     setCategory(value);
-    setSubcategory('All');
+    setSubcategory([]);
   }
+
+  useEffect(() => {
+    setSubcategory((prev) => {
+      const next = prev.filter((s) => subcategories.includes(s));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [subcategories]);
 
   const filtered = useMemo(
     () =>
       equipment
         .filter((e) => category === 'All' || e.category === category)
-        .filter((e) => subcategory === 'All' || e.subcategory === subcategory),
+        .filter((e) => subcategory.length === 0 || subcategory.includes(e.subcategory)),
     [equipment, category, subcategory],
   );
 
@@ -128,6 +136,8 @@ export default function Report() {
     () => [...filtered].sort((a, b) => a.location.localeCompare(b.location) || a.item.localeCompare(b.item)),
     [filtered],
   );
+
+  const subcategoryLabel = subcategory.length === 0 ? 'All' : subcategory.join(', ');
 
   const customCols = useMemo(() => customFieldColumns(categoryDefs), [categoryDefs]);
 
@@ -195,14 +205,14 @@ export default function Report() {
               </option>
             ))}
           </select>
-          <select className="input w-auto" value={subcategory} onChange={(e) => setSubcategory(e.target.value)}>
-            <option value="All">All sub categories</option>
-            {subcategories.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="sub categories"
+            options={subcategories}
+            selected={subcategory}
+            onChange={setSubcategory}
+            disabled={subcategories.length === 0}
+            className="w-auto min-w-[10rem]"
+          />
           <ColumnPickerButton
             columns={columnPickerOptions}
             isVisible={isColumnVisible}
@@ -242,7 +252,7 @@ export default function Report() {
           </div>
           <div>
             <span className="font-semibold text-slate-700">Sub Category: </span>
-            {subcategory}
+            {subcategoryLabel}
           </div>
         </div>
 
@@ -262,17 +272,17 @@ export default function Report() {
                 {visibleDetailColumns.map((col) => (
                   <Th
                     key={col.id}
-                    className={col.id === 'status' ? '!whitespace-normal text-center' : 'text-center print:!whitespace-normal'}
+                    className={col.id === 'status' ? '!whitespace-normal text-center' : 'text-left print:!whitespace-normal'}
                   >
                     {col.label}
                   </Th>
                 ))}
                 {visibleCustomCols.map((col) => (
-                  <Th key={col.id} className="text-center print:!whitespace-normal">
+                  <Th key={col.id} className="text-left print:!whitespace-normal">
                     {col.name}
                   </Th>
                 ))}
-                {notesVisible && <Th className="!whitespace-normal text-center w-full print:w-auto">Notes</Th>}
+                {notesVisible && <Th className="!whitespace-normal text-left w-full print:w-auto">Notes</Th>}
               </tr>
             </thead>
             <tbody>
@@ -284,18 +294,23 @@ export default function Report() {
                   }`}
                 >
                   {visibleDetailColumns.map((col) => (
-                    <Td key={col.id} className="text-center whitespace-nowrap print:whitespace-normal print:break-words">
+                    <Td
+                      key={col.id}
+                      className={`whitespace-nowrap print:whitespace-normal print:break-words ${
+                        col.id === 'status' ? 'text-center' : 'text-left'
+                      }`}
+                    >
                       {detailCellContent(e, col.id)}
                     </Td>
                   ))}
                   {visibleCustomCols.map((col) => (
-                    <Td key={col.id} className="text-center whitespace-nowrap print:whitespace-normal print:break-words">
+                    <Td key={col.id} className="text-left whitespace-nowrap print:whitespace-normal print:break-words">
                       {customFieldValue(e, categoryDefs, col)}
                     </Td>
                   ))}
                   {notesVisible && (
-                    <Td className="relative text-center pr-6 print:pr-1 w-full print:w-auto">
-                      <span className="block max-w-[16rem] break-words print:max-w-none mx-auto">{e.statusDetails || ''}</span>
+                    <Td className="relative text-left pr-6 print:pr-1 w-full print:w-auto">
+                      <span className="block max-w-[16rem] break-words print:max-w-none">{e.statusDetails || ''}</span>
                       <HighlightButton
                         active={highlightedDetails.has(e.id)}
                         onClick={() => toggleDetailHighlight(e.id)}
@@ -333,7 +348,7 @@ export default function Report() {
           </div>
           <div>
             <span className="font-semibold text-slate-700">Sub Category: </span>
-            {subcategory}
+            {subcategoryLabel}
           </div>
         </div>
 
@@ -468,7 +483,7 @@ function detailCellContent(e: Equipment, columnId: string) {
       return e.area || '—';
     case 'assignedTo':
       return e.assignedTo || '—';
-    case 'role':
+    case 'subcategory':
       return e.subcategory || '—';
     case 'purchaseDate':
       return e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—';
@@ -480,7 +495,7 @@ function detailCellContent(e: Equipment, columnId: string) {
 function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <th
-      className={`px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${className}`}
+      className={`px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${className}`}
     >
       {children}
     </th>
@@ -489,7 +504,7 @@ function Th({ children, className = '' }: { children: React.ReactNode; className
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <td className={`px-2 py-2 lg:px-3 align-top text-slate-700 print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
+    <td className={`px-2 py-2 lg:px-3 align-middle text-slate-700 leading-tight print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
       {children}
     </td>
   );
