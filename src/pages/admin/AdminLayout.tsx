@@ -230,7 +230,7 @@ function AdminLayoutContent({
         </div>
       </aside>
       <div className="flex-1 min-w-0 md:h-screen md:overflow-y-auto">
-        <main className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+        <main className="px-4 py-6 md:py-8">
           <Outlet />
         </main>
       </div>
