@@ -28,6 +28,7 @@ const FIELD_LABELS: Partial<Record<keyof NewEquipment, string>> = {
   department: 'Department',
   ministry: 'Ministry',
   location: 'Location',
+  area: 'Area',
   purchaseDate: 'Purchase Date',
   status: 'Status',
   statusDetails: 'Status Details',
@@ -62,7 +63,7 @@ export function subscribeEquipment(ministryId: string, cb: (items: Equipment[]) 
     cb(
       snap.docs.map((d) => {
         const data = d.data() as Omit<Equipment, 'id'>;
-        return { id: d.id, ...data, customFields: data.customFields ?? {} };
+        return { id: d.id, ...data, area: data.area ?? '', customFields: data.customFields ?? {} };
       }),
     );
   });
@@ -169,6 +170,6 @@ export async function findEquipmentByCode(ministryId: string, inventoryCode: str
   if (snap.empty) return null;
   const d = snap.docs[0];
   const data = d.data() as Omit<Equipment, 'id'>;
-  return { id: d.id, ...data, customFields: data.customFields ?? {} };
+  return { id: d.id, ...data, area: data.area ?? '', customFields: data.customFields ?? {} };
 }
 

@@ -11,6 +11,7 @@ const DETAIL_COLUMNS: { id: string; label: string; widthClass: string }[] = [
   { id: 'status', label: 'Status', widthClass: 'print:w-[5%]' },
   { id: 'item', label: 'Items', widthClass: 'print:w-[17%]' },
   { id: 'location', label: 'Location', widthClass: 'print:w-[12%]' },
+  { id: 'area', label: 'Area', widthClass: 'print:w-[12%]' },
   { id: 'assignedTo', label: 'Assigned to', widthClass: 'print:w-[15%]' },
   { id: 'role', label: 'Role', widthClass: 'print:w-[9%]' },
   { id: 'purchaseDate', label: 'Purchase Date', widthClass: 'print:w-[10%]' },
@@ -463,6 +464,8 @@ function detailCellContent(e: Equipment, columnId: string) {
       return e.item;
     case 'location':
       return e.location || '—';
+    case 'area':
+      return e.area || '—';
     case 'assignedTo':
       return e.assignedTo || '—';
     case 'role':
