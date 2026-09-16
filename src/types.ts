@@ -20,6 +20,7 @@ export interface Ministry {
   inventoryCodePrefix: string; // e.g. "TECH", "AV", "MUSIC"
   notificationEmail?: string;
   department?: string;
+  hiddenFields: ToggleableFieldKey[]; // default equipment fields hidden from every category's form
   createdAt: number;
   updatedAt: number;
 }
@@ -43,11 +44,44 @@ export interface AppUser {
   createdAt: number;
 }
 
+export const CUSTOM_FIELD_TYPES = ['text', 'date', 'checkbox'] as const;
+export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number];
+
+// A custom attribute defined by a user for equipment in a given category,
+// e.g. "Cable Length" (text) on the "Cables" category. Embedded on the
+// category doc rather than its own collection/id-generation scheme, since
+// custom fields only ever exist in the context of one category.
+export interface CustomFieldDefinition {
+  id: string; // client-generated (crypto.randomUUID()), stable across renames
+  name: string; // display label, e.g. "Cable Length"
+  type: CustomFieldType;
+}
+
+// Built-in equipment attributes that can be hidden from every category's
+// add/edit form (ministry-wide setting; they still always show in the shared
+// Inventory table/report, just blank when hidden). The identity fields
+// (category, item, inventoryCode, status) are never hideable since the rest
+// of the app depends on them always being set.
+export const TOGGLEABLE_EQUIPMENT_FIELDS = [
+  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'serialNumber', label: 'Serial Number' },
+  { key: 'assignedType', label: 'Assigned Type' },
+  { key: 'assignedTo', label: 'Assigned To' },
+  { key: 'department', label: 'Department' },
+  { key: 'ministry', label: 'Ministry' },
+  { key: 'location', label: 'Location' },
+  { key: 'purchaseDate', label: 'Purchase Date' },
+  { key: 'statusDetails', label: 'Status Details' },
+] as const;
+export type ToggleableFieldKey = (typeof TOGGLEABLE_EQUIPMENT_FIELDS)[number]['key'];
+
 export interface Category {
   id: string; // Firestore doc id
   ministryId: string;
   name: string;
   subcategories: string[];
+  customFields: CustomFieldDefinition[]; // this category's extra attributes
+  showCustomFields: boolean; // whether the custom fields section shows on this category's form/table/report
   createdAt: number;
   updatedAt: number;
 }
@@ -68,6 +102,7 @@ export interface Equipment {
   purchaseDate: string; // yyyy-mm-dd
   status: EquipmentStatus;
   statusDetails: string;
+  customFields: Record<string, string>; // keyed by CustomFieldDefinition.id
   // Internal borrow-tracking fields, not part of the visible inventory table:
   isBorrowed: boolean;
   activeBorrowRequestId: string | null;
@@ -76,6 +111,14 @@ export interface Equipment {
   activePulloutRequestId: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+// The custom fields to actually render/display for a category — empty when
+// the category has turned its custom fields section off, without discarding
+// the definitions (or previously entered data) themselves.
+export function visibleCustomFields(category: Category | undefined): CustomFieldDefinition[] {
+  if (!category || category.showCustomFields === false) return [];
+  return category.customFields;
 }
 
 export type NewEquipment = Omit<

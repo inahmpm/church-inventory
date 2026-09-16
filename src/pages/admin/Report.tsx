@@ -1,8 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
+import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { EQUIPMENT_STATUSES } from '../../types';
-import type { Equipment, EquipmentStatus } from '../../types';
+import { EQUIPMENT_STATUSES, visibleCustomFields } from '../../types';
+import type { Category, Equipment, EquipmentStatus } from '../../types';
+
+function customFieldsSummary(e: Equipment, categories: Category[]) {
+  const defs = visibleCustomFields(categories.find((c) => c.name === e.category));
+  const parts = defs
+    .map((def) => {
+      const value = e.customFields?.[def.id];
+      if (!value) return null;
+      const display = def.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
+      return `${def.name}: ${display}`;
+    })
+    .filter((s): s is string => Boolean(s));
+  return parts.length > 0 ? parts.join(', ') : '—';
+}
 
 const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'Good Condition': 'bg-green-500',
@@ -39,6 +53,7 @@ function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
 export default function Report() {
   const { ministryId } = useActiveMinistry();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [categoryDefs, setCategoryDefs] = useState<Category[]>([]);
   const [section, setSection] = useState('Technology');
   const [category, setCategory] = useState('All');
   const [subcategory, setSubcategory] = useState('All');
@@ -65,6 +80,10 @@ export default function Report() {
   useEffect(() => {
     if (!ministryId) return;
     return subscribeEquipment(ministryId, setEquipment);
+  }, [ministryId]);
+  useEffect(() => {
+    if (!ministryId) return;
+    return subscribeCategories(ministryId, setCategoryDefs);
   }, [ministryId]);
 
   const categories = useMemo(
@@ -192,12 +211,13 @@ export default function Report() {
           <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-slate-200">
             <colgroup>
               <col className="print:w-[5%]" />
-              <col className="print:w-[20%]" />
-              <col className="print:w-[14%]" />
-              <col className="print:w-[18%]" />
+              <col className="print:w-[17%]" />
+              <col className="print:w-[12%]" />
+              <col className="print:w-[15%]" />
+              <col className="print:w-[9%]" />
               <col className="print:w-[10%]" />
-              <col className="print:w-[14%]" />
-              <col className="print:w-[19%]" />
+              <col className="print:w-[15%]" />
+              <col className="print:w-[17%]" />
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
@@ -207,6 +227,7 @@ export default function Report() {
                 <Th className="text-center print:!whitespace-normal">Assigned to</Th>
                 <Th className="text-center print:!whitespace-normal">Role</Th>
                 <Th className="text-center print:!whitespace-normal">Purchase Date</Th>
+                <Th className="text-center print:!whitespace-normal">Custom Fields</Th>
                 <Th className="!whitespace-normal text-center w-full print:w-auto">Notes</Th>
               </tr>
             </thead>
@@ -226,6 +247,7 @@ export default function Report() {
                   <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.assignedTo || '—'}</Td>
                   <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.subcategory || '—'}</Td>
                   <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{e.purchaseDate ? e.purchaseDate.slice(0, 4) : '—'}</Td>
+                  <Td className="text-center whitespace-nowrap print:whitespace-normal print:break-words">{customFieldsSummary(e, categoryDefs)}</Td>
                   <Td className="relative text-center pr-6 print:pr-1 w-full print:w-auto">
                     <span className="block max-w-[16rem] break-words print:max-w-none mx-auto">{e.statusDetails || ''}</span>
                     <HighlightButton
@@ -238,7 +260,7 @@ export default function Report() {
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center text-slate-400 py-6">
+                  <td colSpan={8} className="text-center text-slate-400 py-6">
                     No equipment found for this filter.
                   </td>
                 </tr>

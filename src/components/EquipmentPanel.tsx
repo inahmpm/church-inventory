@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { generateInventoryCode } from '../lib/equipment';
 import { HISTORY_LOG_ACTION_COLORS, HISTORY_LOG_ACTION_LABELS, subscribeHistoryLogs } from '../lib/historyLogs';
-import { ASSIGNED_TYPES, EQUIPMENT_STATUSES } from '../types';
+import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, visibleCustomFields } from '../types';
 import type { AssignedType, Category, Equipment, EquipmentStatus, HistoryLogEntry, Ministry, NewEquipment } from '../types';
 import QrCodeLabel from './QrCodeLabel';
 import { printQrLabels } from '../lib/printQrLabels';
@@ -54,7 +54,14 @@ export default function EquipmentPanel({
     return subscribeHistoryLogs(ministry.id, (logs) => setHistory(logs.filter((l) => l.equipmentId === initial.id)));
   }, [initial, open, ministry.id]);
 
-  const subcategoryOptions = categories.find((c) => c.name === form.category)?.subcategories ?? [];
+  const selectedCategory = categories.find((c) => c.name === form.category);
+  const subcategoryOptions = selectedCategory?.subcategories ?? [];
+  const hiddenFields = ministry.hiddenFields;
+  const customFieldDefs = visibleCustomFields(selectedCategory);
+
+  function setCustomField(fieldId: string, value: string) {
+    setForm({ ...form, customFields: { ...form.customFields, [fieldId]: value } });
+  }
 
   async function handlePrintLabel() {
     if (!form.inventoryCode) return;
@@ -127,24 +134,26 @@ export default function EquipmentPanel({
             </select>
           </Field>
 
-          <Field label="Subcategory">
-            <select
-              className="input"
-              value={form.subcategory}
-              onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
-              disabled={!subcategoryOptions.length}
-            >
-              <option value="">None</option>
-              {form.subcategory && !subcategoryOptions.includes(form.subcategory) && (
-                <option value={form.subcategory}>{form.subcategory}</option>
-              )}
-              {subcategoryOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {!hiddenFields.includes('subcategory') && (
+            <Field label="Subcategory">
+              <select
+                className="input"
+                value={form.subcategory}
+                onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
+                disabled={!subcategoryOptions.length}
+              >
+                <option value="">None</option>
+                {form.subcategory && !subcategoryOptions.includes(form.subcategory) && (
+                  <option value={form.subcategory}>{form.subcategory}</option>
+                )}
+                {subcategoryOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <Field label="Inventory Code (QR code value)">
             <input
@@ -165,79 +174,93 @@ export default function EquipmentPanel({
             />
           </Field>
 
-          <Field label="Serial Number">
-            <input
-              className="input"
-              value={form.serialNumber}
-              onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
-              placeholder="Manufacturer serial number (optional)"
-            />
-          </Field>
+          {!hiddenFields.includes('serialNumber') && (
+            <Field label="Serial Number">
+              <input
+                className="input"
+                value={form.serialNumber}
+                onChange={(e) => setForm({ ...form, serialNumber: e.target.value })}
+                placeholder="Manufacturer serial number (optional)"
+              />
+            </Field>
+          )}
 
-          <Field label="Assigned Type">
-            <select
-              required
-              className="input"
-              value={form.assignedType}
-              onChange={(e) => setForm({ ...form, assignedType: e.target.value as AssignedType })}
-            >
-              {ASSIGNED_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">
-              {form.assignedType === 'Borrowable' && 'Can be scanned into a borrow request; tracks available/borrowed.'}
-              {form.assignedType === 'Fixed' && 'Installed in a fixed location — cannot be borrowed or scanned.'}
-              {form.assignedType === 'Issued' && 'Assigned to a person, but can be re-issued to someone else later.'}
-            </p>
-          </Field>
+          {!hiddenFields.includes('assignedType') && (
+            <Field label="Assigned Type">
+              <select
+                required
+                className="input"
+                value={form.assignedType}
+                onChange={(e) => setForm({ ...form, assignedType: e.target.value as AssignedType })}
+              >
+                {ASSIGNED_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-400">
+                {form.assignedType === 'Borrowable' && 'Can be scanned into a borrow request; tracks available/borrowed.'}
+                {form.assignedType === 'Fixed' && 'Installed in a fixed location — cannot be borrowed or scanned.'}
+                {form.assignedType === 'Issued' && 'Assigned to a person, but can be re-issued to someone else later.'}
+              </p>
+            </Field>
+          )}
 
-          <Field label="Assigned to">
-            <input
-              className="input"
-              value={form.assignedTo}
-              onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
-              placeholder="Person/ministry primarily responsible (optional)"
-            />
-          </Field>
+          {!hiddenFields.includes('assignedTo') && (
+            <Field label="Assigned to">
+              <input
+                className="input"
+                value={form.assignedTo}
+                onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
+                placeholder="Person/ministry primarily responsible (optional)"
+              />
+            </Field>
+          )}
 
-          <Field label="Department">
-            <input
-              className="input"
-              value={form.department}
-              onChange={(e) => setForm({ ...form, department: e.target.value })}
-              placeholder="e.g. Worship (optional)"
-            />
-          </Field>
+          {!hiddenFields.includes('department') && (
+            <Field label="Department">
+              <input
+                className="input"
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+                placeholder="e.g. Worship (optional)"
+              />
+            </Field>
+          )}
 
-          <Field label="Ministry">
-            <input
-              className="input"
-              value={form.ministry}
-              onChange={(e) => setForm({ ...form, ministry: e.target.value })}
-              placeholder="e.g. Youth Ministry (optional)"
-            />
-          </Field>
+          {!hiddenFields.includes('ministry') && (
+            <Field label="Ministry">
+              <input
+                className="input"
+                value={form.ministry}
+                onChange={(e) => setForm({ ...form, ministry: e.target.value })}
+                placeholder="e.g. Youth Ministry (optional)"
+              />
+            </Field>
+          )}
 
-          <Field label="Location">
-            <input
-              className="input"
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              placeholder="e.g. Main Sanctuary, Storage Room (optional)"
-            />
-          </Field>
+          {!hiddenFields.includes('location') && (
+            <Field label="Location">
+              <input
+                className="input"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="e.g. Main Sanctuary, Storage Room (optional)"
+              />
+            </Field>
+          )}
 
-          <Field label="Purchase Date">
-            <input
-              type="date"
-              className="input"
-              value={form.purchaseDate}
-              onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })}
-            />
-          </Field>
+          {!hiddenFields.includes('purchaseDate') && (
+            <Field label="Purchase Date">
+              <input
+                type="date"
+                className="input"
+                value={form.purchaseDate}
+                onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })}
+              />
+            </Field>
+          )}
 
           <Field label="Status">
             <select
@@ -253,14 +276,42 @@ export default function EquipmentPanel({
             </select>
           </Field>
 
-          <Field label="Status Details">
-            <textarea
-              className="input min-h-[70px]"
-              value={form.statusDetails}
-              onChange={(e) => setForm({ ...form, statusDetails: e.target.value })}
-              placeholder="Notes, e.g. cracked casing, needs new battery..."
-            />
-          </Field>
+          {!hiddenFields.includes('statusDetails') && (
+            <Field label="Status Details">
+              <textarea
+                className="input min-h-[70px]"
+                value={form.statusDetails}
+                onChange={(e) => setForm({ ...form, statusDetails: e.target.value })}
+                placeholder="Notes, e.g. cracked casing, needs new battery..."
+              />
+            </Field>
+          )}
+
+          {customFieldDefs.length > 0 && (
+            <div className="pt-2 border-t border-slate-100 space-y-4">
+              <span className="block text-sm font-medium text-slate-700">
+                {form.category} Fields
+              </span>
+              {customFieldDefs.map((def) => (
+                <Field key={def.id} label={def.name}>
+                  {def.type === 'checkbox' ? (
+                    <input
+                      type="checkbox"
+                      checked={form.customFields[def.id] === 'true'}
+                      onChange={(e) => setCustomField(def.id, e.target.checked ? 'true' : 'false')}
+                    />
+                  ) : (
+                    <input
+                      type={def.type === 'date' ? 'date' : 'text'}
+                      className="input"
+                      value={form.customFields[def.id] ?? ''}
+                      onChange={(e) => setCustomField(def.id, e.target.value)}
+                    />
+                  )}
+                </Field>
+              ))}
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -364,6 +415,7 @@ function blankForm(ministryId: string, initial?: Equipment): NewEquipment {
     purchaseDate: initial?.purchaseDate ?? '',
     status: initial?.status ?? 'Good Condition',
     statusDetails: initial?.statusDetails ?? '',
+    customFields: initial?.customFields ?? {},
   };
 }
 

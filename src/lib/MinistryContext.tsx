@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useCurrentUser } from './useCurrentUser';
-import { getMinistry, subscribeMinistries } from './ministries';
+import { subscribeMinistries, subscribeMinistry } from './ministries';
 import type { Ministry } from '../types';
 
 const ACTIVE_MINISTRY_STORAGE_KEY = 'activeMinistryId';
@@ -45,7 +45,7 @@ export function MinistryProvider({ children }: { children: ReactNode }) {
       setMinistry(null);
       return;
     }
-    getMinistry(ministryId).then(setMinistry);
+    return subscribeMinistry(ministryId, setMinistry);
   }, [ministryId]);
 
   function setMinistryIdAndPersist(id: string) {

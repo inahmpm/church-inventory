@@ -11,20 +11,34 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Ministry } from '../types';
+import type { Ministry, ToggleableFieldKey } from '../types';
 
 const ministriesCol = collection(db, 'ministries');
+
+function withDefaults(id: string, data: Omit<Ministry, 'id'>): Ministry {
+  return { id, ...data, hiddenFields: data.hiddenFields ?? [] };
+}
 
 export function subscribeMinistries(cb: (ministries: Ministry[]) => void) {
   const q = query(ministriesCol, orderBy('name'));
   return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Ministry, 'id'>) })));
+    cb(snap.docs.map((d) => withDefaults(d.id, d.data() as Omit<Ministry, 'id'>)));
+  });
+}
+
+export function subscribeMinistry(id: string, cb: (ministry: Ministry | null) => void) {
+  return onSnapshot(doc(db, 'ministries', id), (snap) => {
+    cb(snap.exists() ? withDefaults(snap.id, snap.data() as Omit<Ministry, 'id'>) : null);
   });
 }
 
 export async function getMinistry(id: string): Promise<Ministry | null> {
   const snap = await getDoc(doc(db, 'ministries', id));
-  return snap.exists() ? { id: snap.id, ...(snap.data() as Omit<Ministry, 'id'>) } : null;
+  return snap.exists() ? withDefaults(snap.id, snap.data() as Omit<Ministry, 'id'>) : null;
+}
+
+export async function setHiddenFields(id: string, hiddenFields: ToggleableFieldKey[]) {
+  await updateDoc(doc(db, 'ministries', id), { hiddenFields, updatedAt: Date.now() });
 }
 
 export async function getMinistryBySlug(slug: string): Promise<Ministry | null> {
