@@ -665,6 +665,7 @@ export default function Inventory() {
                   )}
                   {isColumnVisible('ministry') && <Td className="hidden lg:table-cell">{e.ministry || '—'}</Td>}
                   {isColumnVisible('location') && <Td className="hidden lg:table-cell">{e.location || '—'}</Td>}
+                  {isColumnVisible('area') && <Td className="hidden lg:table-cell">{e.area || '—'}</Td>}
                   {isColumnVisible('purchaseDate') && (
                     <Td className="hidden xl:table-cell">{e.purchaseDate || '—'}</Td>
                   )}
