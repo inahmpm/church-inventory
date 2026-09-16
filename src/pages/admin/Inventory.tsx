@@ -8,7 +8,7 @@ import {
 } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, visibleCustomFields } from '../../types';
+import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, customFieldColumns, customFieldValue } from '../../types';
 import type { AssignedType, Category, Equipment, NewEquipment } from '../../types';
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
@@ -106,19 +106,6 @@ function IconSearch() {
   );
 }
 
-function customFieldsSummary(e: Equipment, categories: Category[]) {
-  const defs = visibleCustomFields(categories.find((c) => c.name === e.category));
-  const parts = defs
-    .map((def) => {
-      const value = e.customFields?.[def.id];
-      if (!value) return null;
-      const display = def.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
-      return `${def.name}: ${display}`;
-    })
-    .filter((s): s is string => Boolean(s));
-  return parts.length > 0 ? parts.join(', ') : '—';
-}
-
 function availabilityLabel(e: Equipment) {
   if (e.pulloutStatus) {
     return (
@@ -185,6 +172,8 @@ export default function Inventory() {
     () => Array.from(new Set(equipment.map((e) => e.category))).sort(),
     [equipment],
   );
+
+  const customFieldCols = useMemo(() => customFieldColumns(categories), [categories]);
 
   const subcategoryFilterOptions = useMemo(
     () =>
@@ -601,7 +590,11 @@ export default function Inventory() {
                 </Th>
               ))}
               <Th className="hidden xl:table-cell">Status Details</Th>
-              <Th className="hidden xl:table-cell">Custom Fields</Th>
+              {customFieldCols.map((col) => (
+                <Th key={col.id} className="hidden xl:table-cell">
+                  {col.name}
+                </Th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -640,18 +633,17 @@ export default function Inventory() {
                   <Td className="hidden xl:table-cell max-w-xs truncate" title={e.statusDetails}>
                     {e.statusDetails || '—'}
                   </Td>
-                  <Td
-                    className="hidden xl:table-cell max-w-xs truncate"
-                    title={customFieldsSummary(e, categories)}
-                  >
-                    {customFieldsSummary(e, categories)}
-                  </Td>
+                  {customFieldCols.map((col) => (
+                    <Td key={col.id} className="hidden xl:table-cell">
+                      {customFieldValue(e, categories, col)}
+                    </Td>
+                  ))}
                 </tr>
               );
             })}
             {paged.length === 0 && (
               <tr>
-                <td colSpan={16} className="text-center text-slate-400 py-8">
+                <td colSpan={15 + customFieldCols.length} className="text-center text-slate-400 py-8">
                   No equipment found.
                 </td>
               </tr>
