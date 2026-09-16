@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ASSIGNED_TYPES, EQUIPMENT_STATUSES } from '../types';
-import type { AssignedType, Equipment, EquipmentStatus } from '../types';
+import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, visibleCustomFields } from '../types';
+import type { AssignedType, Category, CustomFieldDefinition, Equipment, EquipmentStatus } from '../types';
 import { downloadCsv, toCsv } from '../lib/csv';
 
 const AVAILABILITY_OPTIONS = ['All', 'Available', 'Borrowed'] as const;
@@ -24,9 +24,11 @@ const CSV_HEADERS = [
 
 export default function ExportInventoryModal({
   equipment,
+  categories: allCategories,
   onClose,
 }: {
   equipment: Equipment[];
+  categories: Category[];
   onClose: () => void;
 }) {
   const categories = useMemo(
@@ -54,7 +56,23 @@ export default function ExportInventoryModal({
     });
   }, [equipment, category, status, assignedType, availability, assignedTo]);
 
+  const customFieldDefs = useMemo(() => {
+    const catNames = new Set(filtered.map((e) => e.category));
+    const defs: CustomFieldDefinition[] = [];
+    const seen = new Set<string>();
+    for (const c of allCategories) {
+      if (!catNames.has(c.name)) continue;
+      for (const f of visibleCustomFields(c)) {
+        if (seen.has(f.id)) continue;
+        seen.add(f.id);
+        defs.push(f);
+      }
+    }
+    return defs;
+  }, [filtered, allCategories]);
+
   function handleExport() {
+    const headers = [...CSV_HEADERS, ...customFieldDefs.map((f) => f.name)];
     const rows = filtered.map((e) => [
       e.category,
       e.subcategory,
@@ -69,8 +87,13 @@ export default function ExportInventoryModal({
       e.status,
       e.statusDetails,
       e.isBorrowed ? 'Borrowed' : 'Available',
+      ...customFieldDefs.map((f) => {
+        const value = e.customFields?.[f.id];
+        if (!value) return '';
+        return f.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
+      }),
     ]);
-    const csv = toCsv(CSV_HEADERS, rows);
+    const csv = toCsv(headers, rows);
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(`inventory-export-${date}.csv`, csv);
     onClose();

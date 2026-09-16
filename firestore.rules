@@ -37,7 +37,8 @@ service cloud.firestore {
     // ministry's name/prefix); the public borrow page also needs read access
     // to resolve a ministry by slug. Only super-admins create ministries; a
     // ministry-admin may only update their own ministry's doc (name, prefix,
-    // notification email) — never create/delete one, and never touch another
+    // notification email, and which default equipment fields are hidden
+    // ministry-wide) — never create/delete one, and never touch another
     // ministry's doc.
     match /ministries/{ministryId} {
       allow read: if true;

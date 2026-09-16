@@ -41,6 +41,12 @@ function formatValue(value: unknown): string {
 function describeChanges(before: Equipment, after: Partial<NewEquipment>): string {
   const changes: string[] = [];
   for (const key of Object.keys(after) as (keyof NewEquipment)[]) {
+    if (key === 'customFields') {
+      if (JSON.stringify(after.customFields ?? {}) !== JSON.stringify(before.customFields ?? {})) {
+        changes.push('Custom Fields updated');
+      }
+      continue;
+    }
     const newValue = after[key];
     const oldValue = before[key];
     if (newValue === oldValue) continue;
@@ -53,7 +59,12 @@ function describeChanges(before: Equipment, after: Partial<NewEquipment>): strin
 export function subscribeEquipment(ministryId: string, cb: (items: Equipment[]) => void) {
   const q = query(equipmentCol, where('ministryId', '==', ministryId), orderBy('category'), orderBy('item'));
   return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Equipment, 'id'>) })));
+    cb(
+      snap.docs.map((d) => {
+        const data = d.data() as Omit<Equipment, 'id'>;
+        return { id: d.id, ...data, customFields: data.customFields ?? {} };
+      }),
+    );
   });
 }
 
@@ -157,6 +168,7 @@ export async function findEquipmentByCode(ministryId: string, inventoryCode: str
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const d = snap.docs[0];
-  return { id: d.id, ...(d.data() as Omit<Equipment, 'id'>) };
+  const data = d.data() as Omit<Equipment, 'id'>;
+  return { id: d.id, ...data, customFields: data.customFields ?? {} };
 }
 
