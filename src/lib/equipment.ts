@@ -81,6 +81,34 @@ export function generateInventoryCode(prefix: string, existingCodes: Iterable<st
   return code;
 }
 
+// Strips a ministry's prefix (e.g. "TECH-") off a full inventory code, for
+// display in an input where the prefix is shown separately. If the code
+// doesn't carry that prefix, it's returned unchanged.
+export function splitInventoryCode(prefix: string, code: string): string {
+  const prefixWithDash = `${prefix}-`;
+  return code.toUpperCase().startsWith(prefixWithDash.toUpperCase()) ? code.slice(prefixWithDash.length) : code;
+}
+
+// Builds a full inventory code from a ministry prefix and whatever a user
+// typed for the rest — used when the prefix is shown as a fixed badge next
+// to an editable suffix input.
+export function joinInventoryCode(prefix: string, suffix: string): string {
+  const trimmed = suffix.trim();
+  return trimmed ? `${prefix}-${trimmed.toUpperCase()}` : '';
+}
+
+// Normalizes a raw, freely-typed code (e.g. from CSV import): if it already
+// carries the ministry's prefix, it's used as-is; otherwise the prefix is
+// prepended so a user can enter just the numeric/suffix part.
+export function normalizeInventoryCode(prefix: string, raw: string): string {
+  const trimmed = raw.trim();
+  const prefixWithDash = `${prefix}-`;
+  if (trimmed.toUpperCase().startsWith(prefixWithDash.toUpperCase())) {
+    return trimmed.toUpperCase();
+  }
+  return `${prefix}-${trimmed.toUpperCase()}`;
+}
+
 export async function createEquipment(data: NewEquipment) {
   const existing = await findEquipmentByCode(data.ministryId, data.inventoryCode);
   if (existing) {
