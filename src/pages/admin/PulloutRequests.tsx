@@ -11,6 +11,8 @@ import {
 } from '../../lib/pulloutRequests';
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import { useActiveMinistry } from '../../lib/MinistryContext';
+import { getMinistry } from '../../lib/ministries';
+import { normalizeInventoryCode } from '../../lib/equipment';
 import type { PulloutItem, PulloutRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
 import { formatDateTime } from '../../lib/date';
@@ -326,19 +328,25 @@ function ScanPanel({ request, onClose }: { request: PulloutRequest; onClose: () 
   const [mode, setMode] = useState<'out' | 'in'>(request.status === 'in_progress' ? 'in' : 'out');
   const [error, setError] = useState<string | null>(null);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
+  const [inventoryCodePrefix, setInventoryCodePrefix] = useState<string | null>(null);
 
   useEffect(() => subscribePulloutItems(request.id, setItems), [request.id]);
+
+  useEffect(() => {
+    getMinistry(request.ministryId).then((m) => setInventoryCodePrefix(m?.inventoryCodePrefix ?? null));
+  }, [request.ministryId]);
 
   const forPulloutCount = items.filter((i) => i.itemStatus === 'for_pullout').length;
   const pulledOutCount = items.filter((i) => i.itemStatus === 'pulled_out').length;
 
   async function handleScan(code: string) {
     setError(null);
+    const normalized = inventoryCodePrefix ? normalizeInventoryCode(inventoryCodePrefix, code) : code;
     try {
       if (mode === 'out') {
-        await scanItemOut(request.id, code, profile?.email ?? null);
+        await scanItemOut(request.id, normalized, profile?.email ?? null);
       } else {
-        await scanItemIn(request.id, code, profile?.email ?? null);
+        await scanItemIn(request.id, normalized, profile?.email ?? null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process scan.');
@@ -400,7 +408,7 @@ function ScanPanel({ request, onClose }: { request: PulloutRequest; onClose: () 
               </button>
             </div>
 
-            <QrCodeScanner onScan={handleScan} />
+            <QrCodeScanner onScan={handleScan} inventoryCodePrefix={inventoryCodePrefix ?? undefined} />
           </>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}

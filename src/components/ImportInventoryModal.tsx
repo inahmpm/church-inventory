@@ -2,7 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, visibleCustomFields } from '../types';
 import type { AssignedType, Category, EquipmentStatus, NewEquipment } from '../types';
 import { parseCsv } from '../lib/csv';
-import { createEquipment, generateInventoryCode } from '../lib/equipment';
+import { createEquipment, generateInventoryCode, normalizeInventoryCode } from '../lib/equipment';
 
 type ImportableEquipment = Omit<NewEquipment, 'ministryId'>;
 
@@ -77,14 +77,15 @@ function parseRows(
       return { line, data: null, error: 'Missing required field (Item).' };
     }
 
-    const inventoryCodeRaw = get('inventoryCode').toUpperCase();
+    const inventoryCodeRaw = get('inventoryCode');
     let inventoryCode: string;
     if (!inventoryCodeRaw) {
       inventoryCode = generateInventoryCode(inventoryCodePrefix, usedCodes);
-    } else if (usedCodes.has(inventoryCodeRaw)) {
-      return { line, data: null, error: `Duplicate Inventory Code "${inventoryCodeRaw}" (already in use).` };
     } else {
-      inventoryCode = inventoryCodeRaw;
+      inventoryCode = normalizeInventoryCode(inventoryCodePrefix, inventoryCodeRaw);
+      if (usedCodes.has(inventoryCode)) {
+        return { line, data: null, error: `Duplicate Inventory Code "${inventoryCode}" (already in use).` };
+      }
     }
     usedCodes.add(inventoryCode);
 
@@ -193,8 +194,9 @@ export default function ImportInventoryModal({
         <p className="text-sm text-slate-500">
           Upload a CSV with columns: Category, Subcategory, Inventory Code, Serial Number, Item, Assigned Type,
           Assigned To, Department, Ministry, Location, Purchase Date, Status, Status Details. Only Item is required
-          (Assigned Type defaults to Borrowable). Any column matching a category's custom field name is imported
-          into that field for rows in that category.
+          (Assigned Type defaults to Borrowable). Leave Inventory Code blank to auto-generate one, or enter just the
+          number (e.g. "0483") and the ministry's prefix ("{inventoryCodePrefix}-") will be added automatically. Any
+          column matching a category's custom field name is imported into that field for rows in that category.
         </p>
 
         <input

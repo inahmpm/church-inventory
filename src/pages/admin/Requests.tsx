@@ -7,6 +7,8 @@ import {
   subscribeBorrowRequests,
 } from '../../lib/borrowRequests';
 import { useActiveMinistry } from '../../lib/MinistryContext';
+import { getMinistry } from '../../lib/ministries';
+import { normalizeInventoryCode } from '../../lib/equipment';
 import type { BorrowRequest } from '../../types';
 import QrCodeScanner from '../../components/QrCodeScanner';
 import { formatDateTime } from '../../lib/date';
@@ -141,11 +143,17 @@ export default function Requests() {
 function ScanPanel({ request, onClose }: { request: BorrowRequest; onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [inventoryCodePrefix, setInventoryCodePrefix] = useState<string | null>(null);
+
+  useEffect(() => {
+    getMinistry(request.ministryId).then((m) => setInventoryCodePrefix(m?.inventoryCodePrefix ?? null));
+  }, [request.ministryId]);
 
   async function handleScan(code: string) {
     setError(null);
+    const normalized = inventoryCodePrefix ? normalizeInventoryCode(inventoryCodePrefix, code) : code;
     try {
-      await scanEquipmentIntoRequest(request.id, request.ministryId, code);
+      await scanEquipmentIntoRequest(request.id, request.ministryId, normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to scan item.');
     }
@@ -181,7 +189,7 @@ function ScanPanel({ request, onClose }: { request: BorrowRequest; onClose: () =
           </p>
         </div>
 
-        <QrCodeScanner onScan={handleScan} />
+        <QrCodeScanner onScan={handleScan} inventoryCodePrefix={inventoryCodePrefix ?? undefined} />
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div>

@@ -5,7 +5,13 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
  * Accepts input from either a camera scan (html5-qrcode) or a USB/Bluetooth
  * QR code scanner, which behaves like a keyboard typing text followed by Enter.
  */
-export default function QrCodeScanner({ onScan }: { onScan: (code: string) => void }) {
+export default function QrCodeScanner({
+  onScan,
+  inventoryCodePrefix,
+}: {
+  onScan: (code: string) => void;
+  inventoryCodePrefix?: string;
+}) {
   const [manualCode, setManualCode] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -81,7 +87,11 @@ export default function QrCodeScanner({ onScan }: { onScan: (code: string) => vo
         <input
           autoFocus
           className="input font-mono"
-          placeholder="Scan with USB scanner or type QR code value, then Enter"
+          placeholder={
+            inventoryCodePrefix
+              ? `Scan, or type the code (e.g. 0483 for ${inventoryCodePrefix}-0483), then Enter`
+              : 'Scan with USB scanner or type QR code value, then Enter'
+          }
           value={manualCode}
           onChange={(e) => setManualCode(e.target.value)}
         />

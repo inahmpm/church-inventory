@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { generateInventoryCode } from '../lib/equipment';
+import { generateInventoryCode, joinInventoryCode, splitInventoryCode } from '../lib/equipment';
 import { HISTORY_LOG_ACTION_COLORS, HISTORY_LOG_ACTION_LABELS, subscribeHistoryLogs } from '../lib/historyLogs';
 import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, visibleCustomFields } from '../types';
 import type { AssignedType, Category, Equipment, EquipmentStatus, HistoryLogEntry, Ministry, NewEquipment } from '../types';
@@ -157,12 +157,20 @@ export default function EquipmentPanel({
           )}
 
           <Field label="Inventory Code (QR code value)">
-            <input
-              readOnly
-              disabled
-              className="input font-mono bg-slate-50 text-slate-500 cursor-not-allowed"
-              value={form.inventoryCode}
-            />
+            <div className="flex items-stretch">
+              <span className="inline-flex items-center whitespace-nowrap rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 px-3 font-mono text-sm text-slate-500">
+                {ministry.inventoryCodePrefix}-
+              </span>
+              <input
+                required
+                className="input rounded-l-none font-mono"
+                value={splitInventoryCode(ministry.inventoryCodePrefix, form.inventoryCode)}
+                onChange={(e) =>
+                  setForm({ ...form, inventoryCode: joinInventoryCode(ministry.inventoryCodePrefix, e.target.value) })
+                }
+                placeholder="0483"
+              />
+            </div>
           </Field>
 
           <Field label="Item">
