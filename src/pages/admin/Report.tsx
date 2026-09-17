@@ -68,10 +68,10 @@ function IconFilter() {
 }
 
 export default function Report() {
-  const { ministryId } = useActiveMinistry();
+  const { ministryId, ministry } = useActiveMinistry();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [categoryDefs, setCategoryDefs] = useState<Category[]>([]);
-  const [section, setSection] = useState('Technology');
+  const [section, setSection] = useState(ministry?.name ?? 'Technology');
   const [category, setCategory] = useState('All');
   const [subcategory, setSubcategory] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -85,6 +85,10 @@ export default function Report() {
   const nextRowId = useRef(1);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([emptyPurchaseRow(0)]);
   const [highlightedDetails, setHighlightedDetails] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setSection(ministry?.name ?? 'Technology');
+  }, [ministry?.name]);
 
   function toggleDetailHighlight(id: string) {
     setHighlightedDetails((prev) => toggleInSet(prev, id));
