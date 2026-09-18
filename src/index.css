@@ -32,6 +32,15 @@ body {
   @page {
     margin: 0.3in;
   }
+  html,
+  body,
+  #root,
+  #root > div,
+  #root div {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
   aside,
   header {
     display: none !important;
