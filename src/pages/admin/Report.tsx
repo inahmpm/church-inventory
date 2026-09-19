@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentSortKey } from '../../types';
+import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentAlias, departmentSortKey } from '../../types';
 import type { Category, Equipment, EquipmentStatus } from '../../types';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
 import SortButton from '../../components/SortButton';
@@ -31,7 +31,7 @@ const EXTRA_DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
   { id: 'inventoryCode', label: 'Inventory Code', weight: 10 },
   { id: 'serialNumber', label: 'Serial Number', weight: 10 },
   { id: 'assignedType', label: 'Assigned Type', weight: 9 },
-  { id: 'department', label: 'Department', weight: 10 },
+  { id: 'department', label: 'Dept', weight: 10 },
   { id: 'ministry', label: 'Ministry', weight: 10 },
   { id: 'availability', label: 'Availability', weight: 9 },
 ];
@@ -737,7 +737,7 @@ function detailCellContent(e: Equipment, columnId: string) {
     case 'assignedType':
       return e.assignedType || '—';
     case 'department':
-      return e.department || '—';
+      return <span title={e.department || ''}>{departmentAlias(e.department)}</span>;
     case 'ministry':
       return e.ministry || '—';
     case 'availability':
