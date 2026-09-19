@@ -38,6 +38,7 @@ body {
   #root > div,
   #root div {
     height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
   }
@@ -49,6 +50,35 @@ body {
     max-width: none !important;
     padding: 0 !important;
     font-size: 11px !important;
+  }
+  /*
+   * The admin shell (AdminLayout.tsx) wraps every page in flex containers
+   * (`md:flex`, `md:h-screen`, `md:overflow-hidden`/`md:overflow-y-auto`) for
+   * the desktop sidebar layout. Browsers (Safari/WebKit in particular) do not
+   * correctly paginate multi-page content that lives inside a flex formatting
+   * context — it produces huge blank gaps and rows landing on the wrong page.
+   * Drop back to normal block flow for print so long reports/tables can
+   * fragment across pages correctly.
+   */
+  .md\:flex {
+    display: block !important;
+  }
+  .md\:h-screen {
+    height: auto !important;
+  }
+  .md\:overflow-hidden,
+  .md\:overflow-y-auto {
+    overflow: visible !important;
+  }
+  table {
+    border-collapse: collapse;
+  }
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
   }
   * {
     -webkit-print-color-adjust: exact;

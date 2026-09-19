@@ -8,12 +8,13 @@ import {
 } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, customFieldColumns, customFieldValue } from '../../types';
+import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentSortKey } from '../../types';
 import type { AssignedType, Category, Equipment, NewEquipment } from '../../types';
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
 import ExportInventoryModal from '../../components/ExportInventoryModal';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
+import SortButton from '../../components/SortButton';
 import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { printQrLabels } from '../../lib/printQrLabels';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
@@ -193,6 +194,8 @@ export default function Inventory() {
     ],
     [customFieldCols],
   );
+
+  const sortOptions = useMemo(() => COLUMNS.map((col) => ({ id: col.key, label: col.label })), []);
 
   const visibleColumns = useMemo(() => COLUMNS.filter((col) => isColumnVisible(col.key)), [isColumnVisible]);
   const visibleCustomFieldCols = useMemo(
@@ -519,6 +522,7 @@ export default function Inventory() {
               </div>
             )}
           </div>
+          <SortButton options={sortOptions} sortKey={sortKey} sortDir={sortDir} onSelect={(key) => toggleSort(key as SortKey)} />
           <ColumnPickerButton
             columns={columnPickerOptions}
             isVisible={isColumnVisible}
@@ -756,6 +760,8 @@ function sortValue(e: Equipment, key: SortKey): string {
     case 'availability':
       if (e.assignedType !== 'Borrowable') return e.assignedType.toLowerCase();
       return e.isBorrowed ? 'borrowed' : 'available';
+    case 'department':
+      return departmentSortKey(e.department);
     default:
       return (e[key] || '').toLowerCase();
   }

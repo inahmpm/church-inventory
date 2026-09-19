@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
  * Storing the hidden set (rather than the visible set) means new columns
  * (e.g. newly added custom fields) show up by default without migration.
  */
-export function useColumnVisibility(storageKey: string) {
+export function useColumnVisibility(storageKey: string, defaultHidden: string[] = []) {
   const [hidden, setHidden] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -13,7 +13,7 @@ export function useColumnVisibility(storageKey: string) {
     } catch {
       // ignore malformed/inaccessible storage
     }
-    return new Set();
+    return new Set(defaultHidden);
   });
 
   useEffect(() => {
