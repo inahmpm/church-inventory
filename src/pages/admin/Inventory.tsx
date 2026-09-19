@@ -8,7 +8,7 @@ import {
 } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentSortKey } from '../../types';
+import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentAlias, departmentSortKey } from '../../types';
 import type { AssignedType, Category, Equipment, NewEquipment } from '../../types';
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
@@ -47,7 +47,7 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'serialNumber', label: 'Serial Number', className: 'hidden lg:table-cell' },
   { key: 'assignedType', label: 'Assigned Type' },
   { key: 'assignedTo', label: 'Assigned to', className: 'hidden md:table-cell' },
-  { key: 'department', label: 'Department', className: 'hidden lg:table-cell' },
+  { key: 'department', label: 'Dept', className: 'hidden lg:table-cell' },
   { key: 'ministry', label: 'Ministry', className: 'hidden lg:table-cell' },
   { key: 'location', label: 'Location', className: 'hidden lg:table-cell' },
   { key: 'area', label: 'Area', className: 'hidden lg:table-cell' },
@@ -658,7 +658,9 @@ export default function Inventory() {
                     <Td className="hidden md:table-cell">{e.assignedTo || '—'}</Td>
                   )}
                   {isColumnVisible('department') && (
-                    <Td className="hidden lg:table-cell">{e.department || '—'}</Td>
+                    <Td className="hidden lg:table-cell" title={e.department || ''}>
+                      {departmentAlias(e.department)}
+                    </Td>
                   )}
                   {isColumnVisible('ministry') && <Td className="hidden lg:table-cell">{e.ministry || '—'}</Td>}
                   {isColumnVisible('location') && <Td className="hidden lg:table-cell">{e.location || '—'}</Td>}

@@ -37,6 +37,21 @@ export function departmentSortKey(department: string | undefined): string {
   return `${String(rank).padStart(2, '0')}-${department}`;
 }
 
+// Short aliases for the default departments, shown in narrow table columns
+// instead of the full name. Custom departments fall back to their full name.
+export const DEPARTMENT_ALIASES: Record<(typeof DEFAULT_DEPARTMENTS)[number], string> = {
+  Worship: 'W',
+  Outreach: 'O',
+  Relationship: 'R',
+  Discipleship: 'D',
+  Administration: 'A',
+};
+
+export function departmentAlias(department: string | undefined): string {
+  if (!department) return '—';
+  return DEPARTMENT_ALIASES[department as (typeof DEFAULT_DEPARTMENTS)[number]] ?? department;
+}
+
 export interface Department {
   id: string; // Firestore doc id
   name: string;
