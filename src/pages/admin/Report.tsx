@@ -2,22 +2,44 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue } from '../../types';
+import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentSortKey } from '../../types';
 import type { Category, Equipment, EquipmentStatus } from '../../types';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
+import SortButton from '../../components/SortButton';
 import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
 import { formatDate } from '../../lib/date';
 
-const DETAIL_COLUMNS: { id: string; label: string; widthClass: string }[] = [
-  { id: 'status', label: 'Status', widthClass: 'print:w-[5%]' },
-  { id: 'subcategory', label: 'Sub Category', widthClass: 'print:w-[9%]' },
-  { id: 'item', label: 'Items', widthClass: 'print:w-[17%]' },
-  { id: 'location', label: 'Location', widthClass: 'print:w-[12%]' },
-  { id: 'area', label: 'Area', widthClass: 'print:w-[12%]' },
-  { id: 'assignedTo', label: 'Assigned to', widthClass: 'print:w-[15%]' },
-  { id: 'purchaseDate', label: 'Purchase Date', widthClass: 'print:w-[10%]' },
+// `weight` is the relative share of print table width a column gets. Widths
+// are recomputed from whichever columns are actually visible (see
+// `useColumnWidths` below) so the print layout always fills 100% regardless
+// of how many optional columns are toggled on.
+const DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
+  { id: 'status', label: 'Status', weight: 5 },
+  { id: 'subcategory', label: 'Sub Category', weight: 9 },
+  { id: 'item', label: 'Items', weight: 17 },
+  { id: 'location', label: 'Location', weight: 12 },
+  { id: 'area', label: 'Area', weight: 12 },
+  { id: 'assignedTo', label: 'Assigned to', weight: 15 },
+  { id: 'purchaseDate', label: 'Purchase Date', weight: 10 },
 ];
+
+// Additional Equipment Inventory columns, available via the Columns picker but
+// hidden by default so the report's default layout stays unchanged.
+const EXTRA_DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
+  { id: 'category', label: 'Category', weight: 9 },
+  { id: 'inventoryCode', label: 'Inventory Code', weight: 10 },
+  { id: 'serialNumber', label: 'Serial Number', weight: 10 },
+  { id: 'assignedType', label: 'Assigned Type', weight: 9 },
+  { id: 'department', label: 'Department', weight: 10 },
+  { id: 'ministry', label: 'Ministry', weight: 10 },
+  { id: 'availability', label: 'Availability', weight: 9 },
+];
+
+const ALL_DETAIL_COLUMNS = [...DETAIL_COLUMNS, ...EXTRA_DETAIL_COLUMNS];
+const EXTRA_DETAIL_COLUMN_IDS = EXTRA_DETAIL_COLUMNS.map((col) => col.id);
+const CUSTOM_FIELD_COL_WEIGHT = 10;
+const NOTES_COL_WEIGHT = 20;
 
 const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'Good Condition': 'bg-green-500',
@@ -28,14 +50,6 @@ const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
 };
 
 const today = formatDate(new Date());
-
-// Tailwind's JIT scanner needs literal class strings, so widths for a
-// variable number of custom field columns are picked from this fixed list
-// rather than built with a template string.
-const CUSTOM_FIELD_COL_WIDTHS = ['print:w-[20%]', 'print:w-[10%]', 'print:w-[7%]', 'print:w-[5%]'];
-function customFieldColWidthClass(count: number) {
-  return CUSTOM_FIELD_COL_WIDTHS[Math.min(count, CUSTOM_FIELD_COL_WIDTHS.length) - 1] ?? 'print:w-[4%]';
-}
 
 interface PurchaseRow {
   id: number;
@@ -220,6 +234,20 @@ export default function Report() {
         return e.purchaseDate || '';
       case 'notes':
         return e.statusDetails || '';
+      case 'category':
+        return e.category || '';
+      case 'inventoryCode':
+        return e.inventoryCode || '';
+      case 'serialNumber':
+        return e.serialNumber || '';
+      case 'assignedType':
+        return e.assignedType || '';
+      case 'department':
+        return departmentSortKey(e.department);
+      case 'ministry':
+        return e.ministry || '';
+      case 'availability':
+        return reportAvailabilityLabel(e);
       default: {
         const col = customCols.find((c) => c.id === key);
         return col ? customFieldValue(e, categoryDefs, col) : '';
@@ -249,11 +277,12 @@ export default function Report() {
 
   const { isVisible: isColumnVisible, toggle: toggleColumn, showAll: showAllColumns } = useColumnVisibility(
     'report-columns',
+    EXTRA_DETAIL_COLUMN_IDS,
   );
 
   const columnPickerOptions = useMemo(
     () => [
-      ...DETAIL_COLUMNS.map((col) => ({ id: col.id, label: col.label })),
+      ...ALL_DETAIL_COLUMNS.map((col) => ({ id: col.id, label: col.label })),
       ...customCols.map((col) => ({ id: col.id, label: col.name })),
       { id: 'notes', label: 'Notes' },
     ],
@@ -261,7 +290,7 @@ export default function Report() {
   );
 
   const visibleDetailColumns = useMemo(
-    () => DETAIL_COLUMNS.filter((col) => isColumnVisible(col.id)),
+    () => ALL_DETAIL_COLUMNS.filter((col) => isColumnVisible(col.id)),
     [isColumnVisible],
   );
   const visibleCustomCols = useMemo(
@@ -270,6 +299,19 @@ export default function Report() {
   );
   const notesVisible = isColumnVisible('notes');
   const totalDetailColumns = visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0);
+
+  // Recompute each visible column's print width share so the table always
+  // fills 100% no matter which optional columns are toggled on/off.
+  const columnWidthPct = useMemo(() => {
+    const weights = new Map<string, number>();
+    visibleDetailColumns.forEach((col) => weights.set(col.id, col.weight));
+    visibleCustomCols.forEach((col) => weights.set(col.id, CUSTOM_FIELD_COL_WEIGHT));
+    if (notesVisible) weights.set('notes', NOTES_COL_WEIGHT);
+    const totalWeight = Array.from(weights.values()).reduce((sum, w) => sum + w, 0) || 1;
+    const pct = new Map<string, number>();
+    weights.forEach((w, id) => pct.set(id, (w / totalWeight) * 100));
+    return pct;
+  }, [visibleDetailColumns, visibleCustomCols, notesVisible]);
 
   const summaryRows = useMemo(() => {
     const byItem = new Map<string, Record<string, number>>();
@@ -384,6 +426,7 @@ export default function Report() {
               </div>
             )}
           </div>
+          <SortButton options={columnPickerOptions} sortKey={sortKey} sortDir={sortDir} onSelect={toggleSort} />
           <ColumnPickerButton
             columns={columnPickerOptions}
             isVisible={isColumnVisible}
@@ -431,12 +474,25 @@ export default function Report() {
           <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-slate-200">
             <colgroup>
               {visibleDetailColumns.map((col) => (
-                <col key={col.id} className={col.widthClass} />
+                <col
+                  key={col.id}
+                  className="print:w-[var(--col-w)]"
+                  style={{ '--col-w': `${columnWidthPct.get(col.id) ?? 0}%` } as React.CSSProperties}
+                />
               ))}
               {visibleCustomCols.map((col) => (
-                <col key={col.id} className={customFieldColWidthClass(visibleCustomCols.length)} />
+                <col
+                  key={col.id}
+                  className="print:w-[var(--col-w)]"
+                  style={{ '--col-w': `${columnWidthPct.get(col.id) ?? 0}%` } as React.CSSProperties}
+                />
               ))}
-              {notesVisible && <col className="print:w-auto" />}
+              {notesVisible && (
+                <col
+                  className="print:w-[var(--col-w)]"
+                  style={{ '--col-w': `${columnWidthPct.get('notes') ?? 0}%` } as React.CSSProperties}
+                />
+              )}
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
@@ -672,9 +728,32 @@ function detailCellContent(e: Equipment, columnId: string) {
       return e.subcategory || '—';
     case 'purchaseDate':
       return formatDate(e.purchaseDate);
+    case 'category':
+      return e.category || '—';
+    case 'inventoryCode':
+      return e.inventoryCode || '—';
+    case 'serialNumber':
+      return e.serialNumber || '—';
+    case 'assignedType':
+      return e.assignedType || '—';
+    case 'department':
+      return e.department || '—';
+    case 'ministry':
+      return e.ministry || '—';
+    case 'availability':
+      return reportAvailabilityLabel(e);
     default:
       return null;
   }
+}
+
+function reportAvailabilityLabel(e: Equipment): string {
+  if (e.pulloutStatus) {
+    return e.pulloutStatus === 'pulled_out' ? 'Pulled out' : 'Scheduled for pull-out';
+  }
+  if (e.assignedType === 'Fixed') return 'Fixed — not borrowable';
+  if (e.assignedType === 'Issued') return e.assignedTo ? `Issued to ${e.assignedTo}` : 'Issued';
+  return e.isBorrowed ? 'Borrowed' : 'Available';
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

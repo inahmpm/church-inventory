@@ -27,6 +27,16 @@ export interface Ministry {
 
 export const DEFAULT_DEPARTMENTS = ['Worship', 'Outreach', 'Relationship', 'Discipleship', 'Administration'] as const;
 
+// Sort weight for the Department column: Worship=1 ... Administration=5, so
+// tables/reports can order by ministry priority instead of alphabetically.
+// Any custom department not in the default list sorts after these five.
+export function departmentSortKey(department: string | undefined): string {
+  if (!department) return '99-';
+  const index = DEFAULT_DEPARTMENTS.indexOf(department as (typeof DEFAULT_DEPARTMENTS)[number]);
+  const rank = index === -1 ? 99 : index + 1;
+  return `${String(rank).padStart(2, '0')}-${department}`;
+}
+
 export interface Department {
   id: string; // Firestore doc id
   name: string;
