@@ -159,7 +159,28 @@ export function customFieldColumns(categories: Category[]): CustomFieldDefinitio
       if (!byName.has(key)) byName.set(key, def);
     }
   }
-  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+  // "Need License?" is pinned last rather than sorted alphabetically with the rest.
+  const isNeedLicense = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'need license';
+  return Array.from(byName.values()).sort((a, b) => {
+    const aLast = isNeedLicense(a.name);
+    const bLast = isNeedLicense(b.name);
+    if (aLast !== bLast) return aLast ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+// Shorter table header labels for custom fields whose full name is too wide
+// for a column header. Anything not listed here just uses its full name.
+const CUSTOM_FIELD_HEADER_OVERRIDES: Record<string, string> = {
+  'critical ops?': 'Critical?',
+  'ppt prod?': 'Prod?',
+  'word / pastor?': 'WORDP?',
+  'word/pastor?': 'WORDP?',
+  'need license?': 'License?',
+};
+
+export function customFieldHeaderLabel(name: string): string {
+  return CUSTOM_FIELD_HEADER_OVERRIDES[name.trim().toLowerCase()] ?? name;
 }
 
 export function customFieldValue(equipment: Equipment, categories: Category[], column: CustomFieldDefinition): string {
@@ -168,8 +189,9 @@ export function customFieldValue(equipment: Equipment, categories: Category[], c
   );
   if (!def) return '—';
   const value = equipment.customFields?.[def.id];
-  if (!value) return '—';
-  return def.type === 'checkbox' ? (value === 'true' ? 'Yes' : 'No') : value;
+  // An unset checkbox is always "No" (✗), not blank — there's no third state.
+  if (!value) return def.type === 'checkbox' ? '✗' : '—';
+  return def.type === 'checkbox' ? (value === 'true' ? '✓' : '✗') : value;
 }
 
 export type NewEquipment = Omit<
