@@ -305,7 +305,7 @@ export default function Report() {
     [customCols, isColumnVisible],
   );
   const notesVisible = isColumnVisible('notes');
-  const totalDetailColumns = visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0);
+  const totalDetailColumns = visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0) + 1;
 
   // Recompute each visible column's print width share so the table always
   // fills 100% no matter which optional columns are toggled on/off.
@@ -495,6 +495,7 @@ export default function Report() {
                   style={{ '--col-w': `${columnWidthPct.get('notes') ?? 0}%` } as React.CSSProperties}
                 />
               )}
+              <col className="w-8 print:hidden" />
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
@@ -535,6 +536,7 @@ export default function Report() {
                     </span>
                   </Th>
                 )}
+                <Th className="print:hidden">{''}</Th>
               </tr>
             </thead>
             <tbody>
@@ -566,15 +568,16 @@ export default function Report() {
                     </Td>
                   ))}
                   {notesVisible && (
-                    <Td className="relative text-left pr-6 print:pr-1 w-full print:w-auto">
+                    <Td className="text-left w-full print:w-auto">
                       <span className="block max-w-[16rem] break-words print:max-w-none">{e.statusDetails || ''}</span>
-                      <HighlightButton
-                        active={highlightedDetails.has(e.id)}
-                        onClick={() => toggleDetailHighlight(e.id)}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 print:hidden"
-                      />
                     </Td>
                   )}
+                  <Td className="text-center print:hidden">
+                    <HighlightButton
+                      active={highlightedDetails.has(e.id)}
+                      onClick={() => toggleDetailHighlight(e.id)}
+                    />
+                  </Td>
                 </tr>
               ))}
               {sorted.length === 0 && (
