@@ -8,7 +8,15 @@ import {
 } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { ASSIGNED_TYPES, EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentAlias, departmentSortKey } from '../../types';
+import {
+  ASSIGNED_TYPES,
+  EQUIPMENT_STATUSES,
+  customFieldColumns,
+  customFieldHeaderLabel,
+  customFieldValue,
+  departmentAlias,
+  departmentSortKey,
+} from '../../types';
 import type { AssignedType, Category, Equipment, NewEquipment } from '../../types';
 import EquipmentPanel from '../../components/EquipmentPanel';
 import ImportInventoryModal from '../../components/ImportInventoryModal';
@@ -47,7 +55,7 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'serialNumber', label: 'Serial Number', className: 'hidden lg:table-cell' },
   { key: 'assignedType', label: 'Assigned Type' },
   { key: 'assignedTo', label: 'Assigned to', className: 'hidden md:table-cell' },
-  { key: 'department', label: 'Dept', className: 'hidden lg:table-cell' },
+  { key: 'department', label: 'Dept', className: 'hidden lg:table-cell text-center' },
   { key: 'ministry', label: 'Ministry', className: 'hidden lg:table-cell' },
   { key: 'location', label: 'Location', className: 'hidden lg:table-cell' },
   { key: 'area', label: 'Area', className: 'hidden lg:table-cell' },
@@ -620,8 +628,12 @@ export default function Inventory() {
               ))}
               {isColumnVisible('statusDetails') && <Th className="hidden xl:table-cell">Status Details</Th>}
               {visibleCustomFieldCols.map((col) => (
-                <Th key={col.id} className="hidden xl:table-cell">
-                  {col.name}
+                <Th
+                  key={col.id}
+                  className={`hidden xl:table-cell ${col.type === 'checkbox' ? 'text-center' : ''}`}
+                  title={col.name}
+                >
+                  {customFieldHeaderLabel(col.name)}
                 </Th>
               ))}
             </tr>
@@ -658,7 +670,7 @@ export default function Inventory() {
                     <Td className="hidden md:table-cell">{e.assignedTo || '—'}</Td>
                   )}
                   {isColumnVisible('department') && (
-                    <Td className="hidden lg:table-cell" title={e.department || ''}>
+                    <Td className="hidden lg:table-cell text-center" title={e.department || ''}>
                       {departmentAlias(e.department)}
                     </Td>
                   )}
@@ -682,7 +694,10 @@ export default function Inventory() {
                     </Td>
                   )}
                   {visibleCustomFieldCols.map((col) => (
-                    <Td key={col.id} className="hidden xl:table-cell">
+                    <Td
+                      key={col.id}
+                      className={`hidden xl:table-cell ${col.type === 'checkbox' ? 'text-center' : ''}`}
+                    >
                       {customFieldValue(e, categories, col)}
                     </Td>
                   ))}
@@ -773,15 +788,18 @@ function Th({
   children,
   className = '',
   onClick,
+  title,
 }: {
   children?: React.ReactNode;
   className?: string;
   onClick?: () => void;
+  title?: string;
 }) {
   return (
     <th
       className={`px-2 py-2 lg:px-4 lg:py-3 font-medium select-none whitespace-nowrap ${onClick ? 'cursor-pointer hover:text-slate-700' : ''} ${className}`}
       onClick={onClick}
+      title={title}
     >
       {children}
     </th>

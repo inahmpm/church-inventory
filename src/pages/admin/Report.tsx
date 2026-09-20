@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
-import { EQUIPMENT_STATUSES, customFieldColumns, customFieldValue, departmentAlias, departmentSortKey } from '../../types';
+import {
+  EQUIPMENT_STATUSES,
+  customFieldColumns,
+  customFieldHeaderLabel,
+  customFieldValue,
+  departmentAlias,
+  departmentSortKey,
+} from '../../types';
 import type { Category, Equipment, EquipmentStatus } from '../../types';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
 import SortButton from '../../components/SortButton';
@@ -439,10 +446,6 @@ export default function Report() {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <StatusLegend />
-      </div>
-
       <div className="print:hidden">
         <label className="block max-w-xs">
           <span className="block text-sm font-medium text-slate-700 mb-1">Section</span>
@@ -450,10 +453,13 @@ export default function Report() {
         </label>
       </div>
 
-      <div className="card space-y-3 print:space-y-1 print:shadow-none print:ring-0 print:p-0">
-        <div className="flex items-baseline justify-between flex-wrap gap-1">
+      <div className="card space-y-1.5 print:space-y-0.5 print:shadow-none print:ring-0 print:p-0">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-lg font-bold text-slate-800 print:text-xs">EQUIPMENT INVENTORY DETAILS</h2>
-          <span className="text-sm text-slate-500 print:text-[10px]">as of {today}</span>
+          <div className="flex flex-col items-end gap-1">
+            <StatusLegend />
+            <span className="text-sm text-slate-500 print:text-[10px]">as of {today}</span>
+          </div>
         </div>
         <div className="flex flex-wrap gap-x-8 print:gap-x-3 gap-y-1 text-sm print:text-[10px]">
           <div>
@@ -463,10 +469,6 @@ export default function Report() {
           <div>
             <span className="font-semibold text-slate-700">Category: </span>
             {category}
-          </div>
-          <div>
-            <span className="font-semibold text-slate-700">Sub Category: </span>
-            {subcategoryLabel}
           </div>
         </div>
 
@@ -499,7 +501,11 @@ export default function Report() {
                 {visibleDetailColumns.map((col) => (
                   <Th
                     key={col.id}
-                    className={col.id === 'status' ? '!whitespace-normal text-center' : 'text-left print:!whitespace-normal'}
+                    className={
+                      col.id === 'status' || col.id === 'department'
+                        ? '!whitespace-normal text-center'
+                        : 'text-left print:!whitespace-normal'
+                    }
                     onClick={() => toggleSort(col.id)}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -509,9 +515,14 @@ export default function Report() {
                   </Th>
                 ))}
                 {visibleCustomCols.map((col) => (
-                  <Th key={col.id} className="text-left print:!whitespace-normal" onClick={() => toggleSort(col.id)}>
+                  <Th
+                    key={col.id}
+                    className={col.type === 'checkbox' ? 'text-center print:!whitespace-normal' : 'text-left print:!whitespace-normal'}
+                    onClick={() => toggleSort(col.id)}
+                    title={col.name}
+                  >
                     <span className="inline-flex items-center gap-1">
-                      {col.name}
+                      {customFieldHeaderLabel(col.name)}
                       <SortIndicator active={sortKey === col.id} dir={sortDir} />
                     </span>
                   </Th>
@@ -538,14 +549,19 @@ export default function Report() {
                     <Td
                       key={col.id}
                       className={`whitespace-nowrap print:whitespace-normal print:break-words ${
-                        col.id === 'status' ? 'text-center' : 'text-left'
+                        col.id === 'status' || col.id === 'department' ? 'text-center' : 'text-left'
                       }`}
                     >
                       {detailCellContent(e, col.id)}
                     </Td>
                   ))}
                   {visibleCustomCols.map((col) => (
-                    <Td key={col.id} className="text-left whitespace-nowrap print:whitespace-normal print:break-words">
+                    <Td
+                      key={col.id}
+                      className={`whitespace-nowrap print:whitespace-normal print:break-words ${
+                        col.type === 'checkbox' ? 'text-center' : 'text-left'
+                      }`}
+                    >
                       {customFieldValue(e, categoryDefs, col)}
                     </Td>
                   ))}
@@ -769,10 +785,12 @@ function Th({
   children,
   className = '',
   onClick,
+  title,
 }: {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
+  title?: string;
 }) {
   return (
     <th
@@ -780,6 +798,7 @@ function Th({
         onClick ? 'cursor-pointer select-none hover:text-slate-900' : ''
       } ${className}`}
       onClick={onClick}
+      title={title}
     >
       {children}
     </th>
