@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
@@ -24,10 +24,10 @@ import { formatDate } from '../../lib/date';
 const DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
   { id: 'status', label: 'Status', weight: 5 },
   { id: 'subcategory', label: 'Sub Category', weight: 9 },
-  { id: 'item', label: 'Items', weight: 17 },
-  { id: 'location', label: 'Location', weight: 12 },
+  { id: 'item', label: 'Items', weight: 20 },
+  { id: 'location', label: 'Location', weight: 8 },
   { id: 'area', label: 'Area', weight: 12 },
-  { id: 'assignedTo', label: 'Assigned to', weight: 15 },
+  { id: 'assignedTo', label: 'Assigned to', weight: 19 },
   { id: 'purchaseDate', label: 'Purchase Date', weight: 10 },
 ];
 
@@ -38,7 +38,7 @@ const EXTRA_DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
   { id: 'inventoryCode', label: 'Inventory Code', weight: 10 },
   { id: 'serialNumber', label: 'Serial Number', weight: 10 },
   { id: 'assignedType', label: 'Assigned Type', weight: 9 },
-  { id: 'department', label: 'Dept', weight: 10 },
+  { id: 'department', label: 'Dept', weight: 7 },
   { id: 'ministry', label: 'Ministry', weight: 10 },
   { id: 'availability', label: 'Availability', weight: 9 },
 ];
@@ -106,6 +106,8 @@ export default function Report() {
   const nextRowId = useRef(1);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([emptyPurchaseRow(0)]);
   const [highlightedDetails, setHighlightedDetails] = useState<Set<string>>(new Set());
+  const detailRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const [detailRowHeight, setDetailRowHeight] = useState<number | null>(null);
 
   useEffect(() => {
     setSection(ministry?.name ?? 'Technology');
@@ -307,6 +309,38 @@ export default function Report() {
   const notesVisible = isColumnVisible('notes');
   const totalDetailColumns = visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0) + 1;
 
+  // Equalize every detail row to the height of the tallest row (measured from
+  // natural, unwrapped-by-us content), so rows stay visually even even though
+  // some cells wrap to more lines than others. Recomputed on resize and when
+  // entering/leaving print (print uses smaller fonts/padding, so its tallest
+  // row is a different pixel height than screen's).
+  useLayoutEffect(() => {
+    function recomputeRowHeight() {
+      const rows = Array.from(detailRowRefs.current.values());
+      if (rows.length === 0) {
+        setDetailRowHeight(null);
+        return;
+      }
+      rows.forEach((row) => {
+        row.style.height = 'auto';
+      });
+      const max = rows.reduce((tallest, row) => Math.max(tallest, row.offsetHeight), 0);
+      setDetailRowHeight(max || null);
+    }
+    recomputeRowHeight();
+    window.addEventListener('resize', recomputeRowHeight);
+    const printQuery = window.matchMedia('print');
+    printQuery.addEventListener('change', recomputeRowHeight);
+    window.addEventListener('beforeprint', recomputeRowHeight);
+    window.addEventListener('afterprint', recomputeRowHeight);
+    return () => {
+      window.removeEventListener('resize', recomputeRowHeight);
+      printQuery.removeEventListener('change', recomputeRowHeight);
+      window.removeEventListener('beforeprint', recomputeRowHeight);
+      window.removeEventListener('afterprint', recomputeRowHeight);
+    };
+  }, [sorted, visibleDetailColumns, visibleCustomCols, notesVisible]);
+
   // Recompute each visible column's print width share so the table always
   // fills 100% no matter which optional columns are toggled on/off.
   const columnWidthPct = useMemo(() => {
@@ -473,7 +507,7 @@ export default function Report() {
         </div>
 
         <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-slate-200">
+          <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
             <colgroup>
               {visibleDetailColumns.map((col) => (
                 <col
@@ -543,14 +577,17 @@ export default function Report() {
               {sorted.map((e) => (
                 <tr
                   key={e.id}
-                  className={`border-t border-slate-200 ${
-                    highlightedDetails.has(e.id) ? 'bg-sky-100 print:bg-sky-100' : ''
-                  }`}
+                  ref={(el) => {
+                    if (el) detailRowRefs.current.set(e.id, el);
+                    else detailRowRefs.current.delete(e.id);
+                  }}
+                  style={detailRowHeight ? { height: `${detailRowHeight}px` } : undefined}
+                  className={highlightedDetails.has(e.id) ? 'bg-sky-100 print:bg-sky-100' : ''}
                 >
                   {visibleDetailColumns.map((col) => (
                     <Td
                       key={col.id}
-                      className={`whitespace-nowrap print:whitespace-normal print:break-words ${
+                      className={`whitespace-normal break-words ${
                         col.id === 'status' || col.id === 'department' ? 'text-center' : 'text-left'
                       }`}
                     >
@@ -560,7 +597,7 @@ export default function Report() {
                   {visibleCustomCols.map((col) => (
                     <Td
                       key={col.id}
-                      className={`whitespace-nowrap print:whitespace-normal print:break-words ${
+                      className={`whitespace-normal break-words ${
                         col.type === 'checkbox' ? 'text-center' : 'text-left'
                       }`}
                     >
@@ -569,7 +606,9 @@ export default function Report() {
                   ))}
                   {notesVisible && (
                     <Td className="text-left w-full print:w-auto">
-                      <span className="block max-w-[16rem] break-words print:max-w-none">{e.statusDetails || ''}</span>
+                      <span className="block max-w-[16rem] break-words print:max-w-none">
+                        {e.statusDetails || ''}
+                      </span>
                     </Td>
                   )}
                   <Td className="text-center print:hidden">
@@ -613,7 +652,7 @@ export default function Report() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-slate-200">
+          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
                 <Th>Equipment Name</Th>
@@ -625,7 +664,7 @@ export default function Report() {
             </thead>
             <tbody>
               {summaryRows.map((row) => (
-                <tr key={row.item} className="border-t border-slate-200">
+                <tr key={row.item}>
                   <Td>{row.item}</Td>
                   {EQUIPMENT_STATUSES.map((s) => (
                     <Td key={s} className="text-center">
@@ -645,7 +684,7 @@ export default function Report() {
             </tbody>
             {summaryRows.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-slate-300 font-semibold bg-slate-50">
+                <tr className="border-t-2 border-black font-semibold bg-slate-200">
                   <Td>TOTAL</Td>
                   {EQUIPMENT_STATUSES.map((s) => (
                     <Td key={s} className="text-center">
@@ -669,7 +708,7 @@ export default function Report() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-slate-200">
+          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
                 <Th>Proposed Items</Th>
@@ -681,7 +720,7 @@ export default function Report() {
             </thead>
             <tbody>
               {purchaseRows.map((row) => (
-                <tr key={row.id} className="border-t border-slate-200">
+                <tr key={row.id}>
                   <Td>
                     <PurchaseInput
                       value={row.item}
@@ -797,7 +836,7 @@ function Th({
 }) {
   return (
     <th
-      className={`px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${
+      className={`border border-black px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${
         onClick ? 'cursor-pointer select-none hover:text-slate-900' : ''
       } ${className}`}
       onClick={onClick}
@@ -814,7 +853,7 @@ function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <td className={`px-2 py-2 lg:px-3 align-middle text-slate-700 leading-tight print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
+    <td className={`border border-black px-2 py-2 lg:px-3 align-middle text-slate-700 leading-tight print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
       {children}
     </td>
   );
