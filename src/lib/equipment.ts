@@ -63,7 +63,13 @@ export function subscribeEquipment(ministryId: string, cb: (items: Equipment[]) 
     cb(
       snap.docs.map((d) => {
         const data = d.data() as Omit<Equipment, 'id'>;
-        return { id: d.id, ...data, area: data.area ?? '', customFields: data.customFields ?? {} };
+        return {
+          id: d.id,
+          ...data,
+          area: data.area ?? '',
+          remarks: data.remarks ?? '',
+          customFields: data.customFields ?? {},
+        };
       }),
     );
   });
@@ -116,6 +122,7 @@ export async function createEquipment(data: NewEquipment) {
   }
   const ref = await addDoc(equipmentCol, {
     ...data,
+    remarks: '',
     isBorrowed: false,
     activeBorrowRequestId: null,
     pulloutStatus: null,
@@ -198,6 +205,32 @@ export async function findEquipmentByCode(ministryId: string, inventoryCode: str
   if (snap.empty) return null;
   const d = snap.docs[0];
   const data = d.data() as Omit<Equipment, 'id'>;
-  return { id: d.id, ...data, area: data.area ?? '', customFields: data.customFields ?? {} };
+  return {
+    id: d.id,
+    ...data,
+    area: data.area ?? '',
+    remarks: data.remarks ?? '',
+    customFields: data.customFields ?? {},
+  };
+}
+
+// Remarks are only ever set from the Report table, so this bypasses the
+// change-log describeChanges() path used by full equipment edits.
+export async function updateEquipmentRemarks(id: string, remarks: string) {
+  await updateDoc(doc(db, 'equipment', id), { remarks, updatedAt: Date.now() });
+}
+
+// Edits a single custom field value from the Report table, same reasoning
+// as updateEquipmentRemarks above — no full-form change log needed.
+export async function updateEquipmentCustomField(
+  id: string,
+  current: Record<string, string>,
+  fieldId: string,
+  value: string,
+) {
+  await updateDoc(doc(db, 'equipment', id), {
+    customFields: { ...current, [fieldId]: value },
+    updatedAt: Date.now(),
+  });
 }
 
