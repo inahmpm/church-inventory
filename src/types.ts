@@ -129,7 +129,6 @@ export interface Equipment {
   purchaseDate: string; // yyyy-mm-dd
   status: EquipmentStatus;
   statusDetails: string;
-  remarks: string; // Report-table-only note; not shown or editable on the Equipment Inventory form
   customFields: Record<string, string>; // keyed by CustomFieldDefinition.id
   // Internal borrow-tracking fields, not part of the visible inventory table:
   isBorrowed: boolean;
@@ -162,56 +161,32 @@ export function customFieldColumns(categories: Category[]): CustomFieldDefinitio
   }
   // "Need License?" is pinned last rather than sorted alphabetically with the rest.
   const isNeedLicense = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'need license';
-  const columns = Array.from(byName.values()).sort((a, b) => {
+  return Array.from(byName.values()).sort((a, b) => {
     const aLast = isNeedLicense(a.name);
     const bLast = isNeedLicense(b.name);
     if (aLast !== bLast) return aLast ? 1 : -1;
     return a.name.localeCompare(b.name);
   });
-
-  // "Uses MS Office?" is pulled out of alphabetical order to sit right before
-  // "Critical Ops?" rather than after it.
-  const isUsesMsOffice = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'uses ms office';
-  const isCriticalOps = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'critical ops';
-  const usesMsOfficeIndex = columns.findIndex((c) => isUsesMsOffice(c.name));
-  const criticalOpsIndex = columns.findIndex((c) => isCriticalOps(c.name));
-  if (usesMsOfficeIndex !== -1 && criticalOpsIndex !== -1 && usesMsOfficeIndex > criticalOpsIndex) {
-    const [usesMsOffice] = columns.splice(usesMsOfficeIndex, 1);
-    columns.splice(criticalOpsIndex, 0, usesMsOffice);
-  }
-
-  return columns;
 }
 
 // Shorter table header labels for custom fields whose full name is too wide
 // for a column header. Anything not listed here just uses its full name.
 const CUSTOM_FIELD_HEADER_OVERRIDES: Record<string, string> = {
-  'critical ops?': 'Critical Daily Ops?',
-  'ppt prod?': 'PPT / Prod?',
-  'word / pastor?': 'D.H & Pastors?',
-  'word/pastor?': 'D.H & Pastors?',
-  'need license?': 'Give MS Office License?',
+  'critical ops?': 'Critical?',
+  'ppt prod?': 'Prod?',
+  'word / pastor?': 'WORDP?',
+  'word/pastor?': 'WORDP?',
+  'need license?': 'License?',
 };
 
 export function customFieldHeaderLabel(name: string): string {
   return CUSTOM_FIELD_HEADER_OVERRIDES[name.trim().toLowerCase()] ?? name;
 }
 
-// Resolves a report column (deduped by name across categories) back to the
-// specific field definition on this equipment's own category, if any — its
-// `id` is the key under `equipment.customFields`.
-export function customFieldDefFor(
-  equipment: Equipment,
-  categories: Category[],
-  column: CustomFieldDefinition,
-): CustomFieldDefinition | undefined {
-  return visibleCustomFields(categories.find((c) => c.name === equipment.category)).find(
+export function customFieldValue(equipment: Equipment, categories: Category[], column: CustomFieldDefinition): string {
+  const def = visibleCustomFields(categories.find((c) => c.name === equipment.category)).find(
     (f) => f.name.toLowerCase() === column.name.toLowerCase(),
   );
-}
-
-export function customFieldValue(equipment: Equipment, categories: Category[], column: CustomFieldDefinition): string {
-  const def = customFieldDefFor(equipment, categories, column);
   if (!def) return '—';
   const value = equipment.customFields?.[def.id];
   // An unset checkbox is always "No" (✗), not blank — there's no third state.
@@ -228,7 +203,6 @@ export type NewEquipment = Omit<
   | 'activePulloutRequestId'
   | 'createdAt'
   | 'updatedAt'
-  | 'remarks'
 >;
 
 export type BorrowRequestStatus = 'pending' | 'borrowed' | 'returned' | 'denied';
