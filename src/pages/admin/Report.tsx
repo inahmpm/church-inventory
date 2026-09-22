@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { subscribeEquipment, updateEquipmentCustomField, updateEquipmentRemarks } from '../../lib/equipment';
+import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import {
@@ -424,6 +425,38 @@ export default function Report() {
     };
   }, [sorted, visibleDetailColumns, visibleCustomCols, notesVisible, remarksVisible]);
 
+  // Equalize every detail row to the height of the tallest row (measured from
+  // natural, unwrapped-by-us content), so rows stay visually even even though
+  // some cells wrap to more lines than others. Recomputed on resize and when
+  // entering/leaving print (print uses smaller fonts/padding, so its tallest
+  // row is a different pixel height than screen's).
+  useLayoutEffect(() => {
+    function recomputeRowHeight() {
+      const rows = Array.from(detailRowRefs.current.values());
+      if (rows.length === 0) {
+        setDetailRowHeight(null);
+        return;
+      }
+      rows.forEach((row) => {
+        row.style.height = 'auto';
+      });
+      const max = rows.reduce((tallest, row) => Math.max(tallest, row.offsetHeight), 0);
+      setDetailRowHeight(max || null);
+    }
+    recomputeRowHeight();
+    window.addEventListener('resize', recomputeRowHeight);
+    const printQuery = window.matchMedia('print');
+    printQuery.addEventListener('change', recomputeRowHeight);
+    window.addEventListener('beforeprint', recomputeRowHeight);
+    window.addEventListener('afterprint', recomputeRowHeight);
+    return () => {
+      window.removeEventListener('resize', recomputeRowHeight);
+      printQuery.removeEventListener('change', recomputeRowHeight);
+      window.removeEventListener('beforeprint', recomputeRowHeight);
+      window.removeEventListener('afterprint', recomputeRowHeight);
+    };
+  }, [sorted, visibleDetailColumns, visibleCustomCols, notesVisible]);
+
   // Recompute each visible column's print width share so the table always
   // fills 100% no matter which optional columns are toggled on/off.
   const columnWidthPct = useMemo(() => {
@@ -690,6 +723,7 @@ export default function Report() {
                       key={col.id}
                       className={`whitespace-normal break-words ${
                         col.id === 'status' || col.id === 'department' || col.id === 'ministry' ? 'text-center' : 'text-left'
+                        col.id === 'status' || col.id === 'department' ? 'text-center' : 'text-left'
                       }`}
                     >
                       {detailCellContent(e, col.id)}
