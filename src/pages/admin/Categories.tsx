@@ -8,6 +8,7 @@ import {
   removeSubcategory,
   setShowCustomFields,
   subscribeCategories,
+  updateCustomField,
 } from '../../lib/categories';
 import { setHiddenFields as setMinistryHiddenFields } from '../../lib/ministries';
 import { useActiveMinistry } from '../../lib/MinistryContext';
@@ -71,6 +72,11 @@ export default function Categories() {
   const [newCategory, setNewCategory] = useState('');
   const [subcategoryDrafts, setSubcategoryDrafts] = useState<Record<string, string>>({});
   const [customFieldDrafts, setCustomFieldDrafts] = useState<Record<string, { name: string; type: CustomFieldType }>>({});
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const [editFieldDraft, setEditFieldDraft] = useState<{ name: string; type: CustomFieldType }>({
+    name: '',
+    type: 'text',
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,6 +91,11 @@ export default function Categories() {
   }, [categories, search]);
 
   const editingCategory = categories.find((c) => c.id === editingId) ?? null;
+
+  function closeEditModal() {
+    setEditingId(null);
+    setEditingFieldId(null);
+  }
 
   async function handleToggleDefaultField(key: ToggleableFieldKey) {
     setError(null);
@@ -185,6 +196,28 @@ export default function Categories() {
       await removeCustomField(c.id, c.customFields, fieldId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove custom field.');
+    }
+  }
+
+  function startEditingCustomField(f: { id: string; name: string; type: CustomFieldType }) {
+    setEditingFieldId(f.id);
+    setEditFieldDraft({ name: f.name, type: f.type });
+  }
+
+  async function handleSaveCustomField(c: Category, fieldId: string, e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const name = editFieldDraft.name.trim();
+    if (!name) return;
+    if (c.customFields.some((f) => f.id !== fieldId && f.name.toLowerCase() === name.toLowerCase())) {
+      alert(`"${name}" already exists under "${c.name}".`);
+      return;
+    }
+    try {
+      await updateCustomField(c.id, c.customFields, fieldId, { name, type: editFieldDraft.type });
+      setEditingFieldId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update custom field.');
     }
   }
 
@@ -313,7 +346,7 @@ export default function Categories() {
       {editingCategory && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
-          onClick={() => setEditingId(null)}
+          onClick={closeEditModal}
         >
           <div
             className="card max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto"
@@ -328,7 +361,7 @@ export default function Categories() {
               </h2>
               <button
                 className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-                onClick={() => setEditingId(null)}
+                onClick={closeEditModal}
                 aria-label="Close"
               >
                 &times;
@@ -384,21 +417,64 @@ export default function Categories() {
                 Custom Fields
               </label>
               <div className={`flex flex-wrap gap-2 ${editingCategory.showCustomFields ? '' : 'opacity-50'}`}>
-                {editingCategory.customFields.map((f) => (
-                  <span
-                    key={f.id}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium"
-                  >
-                    {f.name} <span className="text-slate-400">({f.type})</span>
-                    <button
-                      className="text-slate-400 hover:text-red-600 leading-none"
-                      onClick={() => handleRemoveCustomField(editingCategory, f.id)}
-                      aria-label={`Remove ${f.name}`}
+                {editingCategory.customFields.map((f) =>
+                  editingFieldId === f.id ? (
+                    <form
+                      key={f.id}
+                      onSubmit={(e) => handleSaveCustomField(editingCategory, f.id, e)}
+                      className="inline-flex items-center gap-1.5"
                     >
-                      &times;
-                    </button>
-                  </span>
-                ))}
+                      <input
+                        className="input text-xs py-1 px-2 w-32"
+                        autoFocus
+                        value={editFieldDraft.name}
+                        onChange={(e) => setEditFieldDraft((prev) => ({ ...prev, name: e.target.value }))}
+                      />
+                      <select
+                        className="input text-xs py-1 px-2 w-auto"
+                        value={editFieldDraft.type}
+                        onChange={(e) =>
+                          setEditFieldDraft((prev) => ({ ...prev, type: e.target.value as CustomFieldType }))
+                        }
+                      >
+                        <option value="text">Text</option>
+                        <option value="date">Date</option>
+                        <option value="checkbox">Checkbox</option>
+                      </select>
+                      <button type="submit" className="text-primary-600 hover:text-primary-700 text-xs font-medium">
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-slate-600 text-xs"
+                        onClick={() => setEditingFieldId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  ) : (
+                    <span
+                      key={f.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium"
+                    >
+                      {f.name} <span className="text-slate-400">({f.type})</span>
+                      <button
+                        className="text-slate-400 hover:text-primary-600 leading-none"
+                        onClick={() => startEditingCustomField(f)}
+                        aria-label={`Edit ${f.name}`}
+                      >
+                        <IconEdit />
+                      </button>
+                      <button
+                        className="text-slate-400 hover:text-red-600 leading-none"
+                        onClick={() => handleRemoveCustomField(editingCategory, f.id)}
+                        aria-label={`Remove ${f.name}`}
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ),
+                )}
                 {editingCategory.customFields.length === 0 && (
                   <span className="text-xs text-slate-400">No custom fields yet.</span>
                 )}
@@ -440,7 +516,7 @@ export default function Categories() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <button type="button" className="btn-secondary" onClick={() => setEditingId(null)}>
+              <button type="button" className="btn-secondary" onClick={closeEditModal}>
                 Close
               </button>
             </div>
