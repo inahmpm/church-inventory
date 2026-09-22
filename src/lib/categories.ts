@@ -57,18 +57,6 @@ export async function addCustomField(id: string, current: CustomFieldDefinition[
   });
 }
 
-export async function updateCustomField(
-  id: string,
-  current: CustomFieldDefinition[],
-  fieldId: string,
-  updates: Partial<Pick<CustomFieldDefinition, 'name' | 'type'>>,
-) {
-  await updateDoc(doc(db, 'categories', id), {
-    customFields: current.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)),
-    updatedAt: Date.now(),
-  });
-}
-
 export async function removeCustomField(id: string, current: CustomFieldDefinition[], fieldId: string) {
   await updateDoc(doc(db, 'categories', id), {
     customFields: current.filter((f) => f.id !== fieldId),

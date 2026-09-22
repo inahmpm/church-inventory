@@ -1,18 +1,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { subscribeEquipment, updateEquipmentCustomField, updateEquipmentRemarks } from '../../lib/equipment';
 import { subscribeEquipment } from '../../lib/equipment';
 import { subscribeCategories } from '../../lib/categories';
 import { useActiveMinistry } from '../../lib/MinistryContext';
 import {
   EQUIPMENT_STATUSES,
   customFieldColumns,
-  customFieldDefFor,
   customFieldHeaderLabel,
   customFieldValue,
   departmentAlias,
   departmentSortKey,
 } from '../../types';
-import type { Category, CustomFieldDefinition, Equipment, EquipmentStatus } from '../../types';
+import type { Category, Equipment, EquipmentStatus } from '../../types';
 import ColumnPickerButton from '../../components/ColumnPickerButton';
 import SortButton from '../../components/SortButton';
 import MultiSelectDropdown from '../../components/MultiSelectDropdown';
@@ -49,7 +47,6 @@ const ALL_DETAIL_COLUMNS = [...DETAIL_COLUMNS, ...EXTRA_DETAIL_COLUMNS];
 const EXTRA_DETAIL_COLUMN_IDS = EXTRA_DETAIL_COLUMNS.map((col) => col.id);
 const CUSTOM_FIELD_COL_WEIGHT = 10;
 const NOTES_COL_WEIGHT = 20;
-const REMARKS_COL_WEIGHT = 20;
 
 const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'Good Condition': 'bg-green-500',
@@ -109,9 +106,6 @@ export default function Report() {
   const nextRowId = useRef(1);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([emptyPurchaseRow(0)]);
   const [highlightedDetails, setHighlightedDetails] = useState<Set<string>>(new Set());
-  const [remarksDrafts, setRemarksDrafts] = useState<Record<string, string>>({});
-  // Keyed by `${equipmentId}:${customFieldDefId}`.
-  const [customFieldDrafts, setCustomFieldDrafts] = useState<Record<string, string>>({});
   const detailRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [detailRowHeight, setDetailRowHeight] = useState<number | null>(null);
 
@@ -121,79 +115,6 @@ export default function Report() {
 
   function toggleDetailHighlight(id: string) {
     setHighlightedDetails((prev) => toggleInSet(prev, id));
-  }
-
-  function handleRemarksChange(id: string, value: string) {
-    setRemarksDrafts((prev) => ({ ...prev, [id]: value }));
-  }
-
-  async function handleRemarksBlur(e: Equipment) {
-    const draft = remarksDrafts[e.id];
-    if (draft === undefined || draft === e.remarks) return;
-    try {
-      await updateEquipmentRemarks(e.id, draft);
-    } catch (err) {
-      console.error('Failed to update remarks', err);
-    }
-  }
-
-  function handleCustomFieldChange(equipmentId: string, defId: string, value: string) {
-    setCustomFieldDrafts((prev) => ({ ...prev, [`${equipmentId}:${defId}`]: value }));
-  }
-
-  async function handleCustomFieldBlur(e: Equipment, defId: string) {
-    const key = `${e.id}:${defId}`;
-    const draft = customFieldDrafts[key];
-    const current = e.customFields?.[defId] ?? '';
-    if (draft === undefined || draft === current) return;
-    try {
-      await updateEquipmentCustomField(e.id, e.customFields, defId, draft);
-    } catch (err) {
-      console.error('Failed to update custom field', err);
-    }
-  }
-
-  async function handleCustomFieldCheckboxChange(e: Equipment, defId: string, checked: boolean) {
-    try {
-      await updateEquipmentCustomField(e.id, e.customFields, defId, checked ? 'true' : 'false');
-    } catch (err) {
-      console.error('Failed to update custom field', err);
-    }
-  }
-
-  function customFieldCellContent(e: Equipment, col: CustomFieldDefinition) {
-    const def = customFieldDefFor(e, categoryDefs, col);
-    if (!def) return <span className="text-slate-400">—</span>;
-    const rawValue = e.customFields?.[def.id] ?? '';
-
-    if (def.type === 'checkbox') {
-      const checked = rawValue === 'true';
-      return (
-        <>
-          <input
-            type="checkbox"
-            className="accent-primary-600 print:hidden"
-            checked={checked}
-            onChange={(ev) => handleCustomFieldCheckboxChange(e, def.id, ev.target.checked)}
-          />
-          <span className="hidden print:inline">{checked ? '✓' : '✗'}</span>
-        </>
-      );
-    }
-
-    const draft = customFieldDrafts[`${e.id}:${def.id}`] ?? rawValue;
-    return (
-      <>
-        <input
-          type={def.type === 'date' ? 'date' : 'text'}
-          className="block w-full bg-transparent border-0 rounded px-1 py-0.5 -mx-1 -my-0.5 leading-tight focus:outline-none focus:ring-1 focus:ring-primary-400 print:hidden"
-          value={draft}
-          onChange={(ev) => handleCustomFieldChange(e.id, def.id, ev.target.value)}
-          onBlur={() => handleCustomFieldBlur(e, def.id)}
-        />
-        <span className="hidden print:inline break-words">{rawValue || '—'}</span>
-      </>
-    );
   }
 
   function updatePurchaseRow(id: number, field: keyof Omit<PurchaseRow, 'id'>, value: string) {
@@ -322,8 +243,6 @@ export default function Report() {
         return e.purchaseDate || '';
       case 'notes':
         return e.statusDetails || '';
-      case 'remarks':
-        return e.remarks || '';
       case 'category':
         return e.category || '';
       case 'inventoryCode':
@@ -375,7 +294,6 @@ export default function Report() {
       ...ALL_DETAIL_COLUMNS.map((col) => ({ id: col.id, label: col.label })),
       ...customCols.map((col) => ({ id: col.id, label: col.name })),
       { id: 'notes', label: 'Notes' },
-      { id: 'remarks', label: 'Remarks' },
     ],
     [customCols],
   );
@@ -389,41 +307,7 @@ export default function Report() {
     [customCols, isColumnVisible],
   );
   const notesVisible = isColumnVisible('notes');
-  const remarksVisible = isColumnVisible('remarks');
-  const totalDetailColumns =
-    visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0) + (remarksVisible ? 1 : 0) + 1;
-
-  // Equalize every detail row to the height of the tallest row (measured from
-  // natural, unwrapped-by-us content), so rows stay visually even even though
-  // some cells wrap to more lines than others. Recomputed on resize and when
-  // entering/leaving print (print uses smaller fonts/padding, so its tallest
-  // row is a different pixel height than screen's).
-  useLayoutEffect(() => {
-    function recomputeRowHeight() {
-      const rows = Array.from(detailRowRefs.current.values());
-      if (rows.length === 0) {
-        setDetailRowHeight(null);
-        return;
-      }
-      rows.forEach((row) => {
-        row.style.height = 'auto';
-      });
-      const max = rows.reduce((tallest, row) => Math.max(tallest, row.offsetHeight), 0);
-      setDetailRowHeight(max || null);
-    }
-    recomputeRowHeight();
-    window.addEventListener('resize', recomputeRowHeight);
-    const printQuery = window.matchMedia('print');
-    printQuery.addEventListener('change', recomputeRowHeight);
-    window.addEventListener('beforeprint', recomputeRowHeight);
-    window.addEventListener('afterprint', recomputeRowHeight);
-    return () => {
-      window.removeEventListener('resize', recomputeRowHeight);
-      printQuery.removeEventListener('change', recomputeRowHeight);
-      window.removeEventListener('beforeprint', recomputeRowHeight);
-      window.removeEventListener('afterprint', recomputeRowHeight);
-    };
-  }, [sorted, visibleDetailColumns, visibleCustomCols, notesVisible, remarksVisible]);
+  const totalDetailColumns = visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0) + 1;
 
   // Equalize every detail row to the height of the tallest row (measured from
   // natural, unwrapped-by-us content), so rows stay visually even even though
@@ -464,12 +348,11 @@ export default function Report() {
     visibleDetailColumns.forEach((col) => weights.set(col.id, col.weight));
     visibleCustomCols.forEach((col) => weights.set(col.id, CUSTOM_FIELD_COL_WEIGHT));
     if (notesVisible) weights.set('notes', NOTES_COL_WEIGHT);
-    if (remarksVisible) weights.set('remarks', REMARKS_COL_WEIGHT);
     const totalWeight = Array.from(weights.values()).reduce((sum, w) => sum + w, 0) || 1;
     const pct = new Map<string, number>();
     weights.forEach((w, id) => pct.set(id, (w / totalWeight) * 100));
     return pct;
-  }, [visibleDetailColumns, visibleCustomCols, notesVisible, remarksVisible]);
+  }, [visibleDetailColumns, visibleCustomCols, notesVisible]);
 
   const summaryRows = useMemo(() => {
     const byItem = new Map<string, Record<string, number>>();
@@ -646,12 +529,6 @@ export default function Report() {
                   style={{ '--col-w': `${columnWidthPct.get('notes') ?? 0}%` } as React.CSSProperties}
                 />
               )}
-              {remarksVisible && (
-                <col
-                  className="print:w-[var(--col-w)]"
-                  style={{ '--col-w': `${columnWidthPct.get('remarks') ?? 0}%` } as React.CSSProperties}
-                />
-              )}
               <col className="w-8 print:hidden" />
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
@@ -660,7 +537,7 @@ export default function Report() {
                   <Th
                     key={col.id}
                     className={
-                      col.id === 'status' || col.id === 'department' || col.id === 'ministry'
+                      col.id === 'status' || col.id === 'department'
                         ? '!whitespace-normal text-center'
                         : 'text-left print:!whitespace-normal'
                     }
@@ -693,17 +570,6 @@ export default function Report() {
                     </span>
                   </Th>
                 )}
-                {remarksVisible && (
-                  <Th
-                    className="!whitespace-normal text-center w-full print:w-auto"
-                    onClick={() => toggleSort('remarks')}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      Remarks
-                      <SortIndicator active={sortKey === 'remarks'} dir={sortDir} />
-                    </span>
-                  </Th>
-                )}
                 <Th className="print:hidden">{''}</Th>
               </tr>
             </thead>
@@ -722,7 +588,6 @@ export default function Report() {
                     <Td
                       key={col.id}
                       className={`whitespace-normal break-words ${
-                        col.id === 'status' || col.id === 'department' || col.id === 'ministry' ? 'text-center' : 'text-left'
                         col.id === 'status' || col.id === 'department' ? 'text-center' : 'text-left'
                       }`}
                     >
@@ -736,7 +601,7 @@ export default function Report() {
                         col.type === 'checkbox' ? 'text-center' : 'text-left'
                       }`}
                     >
-                      {customFieldCellContent(e, col)}
+                      {customFieldValue(e, categoryDefs, col)}
                     </Td>
                   ))}
                   {notesVisible && (
@@ -744,18 +609,6 @@ export default function Report() {
                       <span className="block max-w-[16rem] break-words print:max-w-none">
                         {e.statusDetails || ''}
                       </span>
-                    </Td>
-                  )}
-                  {remarksVisible && (
-                    <Td className="text-center w-full print:w-auto">
-                      <textarea
-                        className="block w-full max-w-[16rem] mx-auto resize-none bg-transparent border-0 rounded px-1 py-0.5 -my-0.5 leading-tight text-center focus:outline-none focus:ring-1 focus:ring-primary-400 print:hidden"
-                        rows={1}
-                        value={remarksDrafts[e.id] ?? e.remarks}
-                        onChange={(ev) => handleRemarksChange(e.id, ev.target.value)}
-                        onBlur={() => handleRemarksBlur(e)}
-                      />
-                      <span className="hidden print:block break-words">{e.remarks || ''}</span>
                     </Td>
                   )}
                   <Td className="text-center print:hidden">
