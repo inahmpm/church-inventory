@@ -12,10 +12,11 @@ import {
   departmentSortKey,
 } from '../../types';
 import type { Category, CustomFieldDefinition, Equipment, EquipmentStatus } from '../../types';
-import ColumnPickerButton from '../../components/ColumnPickerButton';
+import ColumnPickerButton, { type ColumnPickerOption } from '../../components/ColumnPickerButton';
 import SortButton from '../../components/SortButton';
 import MultiSelectDropdown from '../../components/MultiSelectDropdown';
 import { useColumnVisibility } from '../../lib/useColumnVisibility';
+import { useColumnOrder } from '../../lib/useColumnOrder';
 import { formatDate } from '../../lib/date';
 
 // `weight` is the relative share of print table width a column gets. Widths
@@ -175,7 +176,7 @@ export default function Report() {
             checked={checked}
             onChange={(ev) => handleCustomFieldCheckboxChange(e, def.id, ev.target.checked)}
           />
-          <span className="hidden print:inline">{checked ? '✓' : '✗'}</span>
+          <span className="hidden print:inline">{checked ? '✓' : ''}</span>
         </>
       );
     }
@@ -302,6 +303,8 @@ export default function Report() {
   );
 
   const customCols = useMemo(() => customFieldColumns(categoryDefs), [categoryDefs]);
+  const detailColsById = useMemo(() => new Map(ALL_DETAIL_COLUMNS.map((col) => [col.id, col])), []);
+  const customColsById = useMemo(() => new Map(customCols.map((col) => [col.id, col])), [customCols]);
 
   function sortValue(e: Equipment, key: string): string {
     switch (key) {
@@ -369,28 +372,58 @@ export default function Report() {
     EXTRA_DETAIL_COLUMN_IDS,
   );
 
-  const columnPickerOptions = useMemo(
-    () => [
-      ...ALL_DETAIL_COLUMNS.map((col) => ({ id: col.id, label: col.label })),
-      ...customCols.map((col) => ({ id: col.id, label: col.name })),
-      { id: 'notes', label: 'Notes' },
-      { id: 'remarks', label: 'Remarks' },
-    ],
+  const allColumnIds = useMemo(
+    () => [...ALL_DETAIL_COLUMNS.map((col) => col.id), ...customCols.map((col) => col.id), 'notes', 'remarks'],
     [customCols],
   );
+  const { orderedIds: columnOrder, moveUp: moveColumnUp, moveDown: moveColumnDown } = useColumnOrder(
+    'report-column-order',
+    allColumnIds,
+  );
 
-  const visibleDetailColumns = useMemo(
-    () => ALL_DETAIL_COLUMNS.filter((col) => isColumnVisible(col.id)),
-    [isColumnVisible],
+  // Raw labels (used by the column picker and sort menu). Custom field
+  // headers get run through `customFieldHeaderLabel` only in the table itself.
+  const pickerLabelsById = useMemo(() => {
+    const map = new Map<string, string>();
+    ALL_DETAIL_COLUMNS.forEach((col) => map.set(col.id, col.label));
+    customCols.forEach((col) => map.set(col.id, col.name));
+    map.set('notes', 'Notes');
+    map.set('remarks', 'Remarks');
+    return map;
+  }, [customCols]);
+
+  function columnHeaderLabel(id: string): string {
+    const customCol = customColsById.get(id);
+    if (customCol) return customFieldHeaderLabel(customCol.name);
+    return pickerLabelsById.get(id) ?? id;
+  }
+
+  function columnHeaderClassName(id: string): string {
+    if (id === 'notes') return '!whitespace-normal text-left w-full print:w-auto';
+    if (id === 'remarks') return '!whitespace-normal text-center w-full print:w-auto';
+    const customCol = customColsById.get(id);
+    if (customCol) return customCol.type === 'checkbox' ? 'text-center print:!whitespace-normal' : 'text-left print:!whitespace-normal';
+    return id === 'status' || id === 'department' || id === 'ministry'
+      ? '!whitespace-normal text-center'
+      : 'text-left print:!whitespace-normal';
+  }
+
+  const columnPickerOptions = useMemo(
+    () =>
+      columnOrder
+        .map((id) => {
+          const label = pickerLabelsById.get(id);
+          return label ? { id, label } : null;
+        })
+        .filter((opt): opt is ColumnPickerOption => opt !== null),
+    [columnOrder, pickerLabelsById],
   );
-  const visibleCustomCols = useMemo(
-    () => customCols.filter((col) => isColumnVisible(col.id)),
-    [customCols, isColumnVisible],
+
+  const visibleColumnIds = useMemo(
+    () => columnOrder.filter((id) => isColumnVisible(id)),
+    [columnOrder, isColumnVisible],
   );
-  const notesVisible = isColumnVisible('notes');
-  const remarksVisible = isColumnVisible('remarks');
-  const totalDetailColumns =
-    visibleDetailColumns.length + visibleCustomCols.length + (notesVisible ? 1 : 0) + (remarksVisible ? 1 : 0) + 1;
+  const totalDetailColumns = visibleColumnIds.length + 1;
 
   // Equalize every detail row to the height of the tallest row (measured from
   // natural, unwrapped-by-us content), so rows stay visually even even though
@@ -422,21 +455,23 @@ export default function Report() {
       window.removeEventListener('beforeprint', recomputeRowHeight);
       window.removeEventListener('afterprint', recomputeRowHeight);
     };
-  }, [sorted, visibleDetailColumns, visibleCustomCols, notesVisible, remarksVisible]);
+  }, [sorted, visibleColumnIds]);
 
   // Recompute each visible column's print width share so the table always
   // fills 100% no matter which optional columns are toggled on/off.
   const columnWidthPct = useMemo(() => {
     const weights = new Map<string, number>();
-    visibleDetailColumns.forEach((col) => weights.set(col.id, col.weight));
-    visibleCustomCols.forEach((col) => weights.set(col.id, CUSTOM_FIELD_COL_WEIGHT));
-    if (notesVisible) weights.set('notes', NOTES_COL_WEIGHT);
-    if (remarksVisible) weights.set('remarks', REMARKS_COL_WEIGHT);
+    visibleColumnIds.forEach((id) => {
+      if (id === 'notes') weights.set(id, NOTES_COL_WEIGHT);
+      else if (id === 'remarks') weights.set(id, REMARKS_COL_WEIGHT);
+      else if (detailColsById.has(id)) weights.set(id, detailColsById.get(id)!.weight);
+      else if (customColsById.has(id)) weights.set(id, CUSTOM_FIELD_COL_WEIGHT);
+    });
     const totalWeight = Array.from(weights.values()).reduce((sum, w) => sum + w, 0) || 1;
     const pct = new Map<string, number>();
     weights.forEach((w, id) => pct.set(id, (w / totalWeight) * 100));
     return pct;
-  }, [visibleDetailColumns, visibleCustomCols, notesVisible, remarksVisible]);
+  }, [visibleColumnIds, detailColsById, customColsById]);
 
   const summaryRows = useMemo(() => {
     const byItem = new Map<string, Record<string, number>>();
@@ -557,6 +592,8 @@ export default function Report() {
             isVisible={isColumnVisible}
             onToggle={toggleColumn}
             onShowAll={showAllColumns}
+            onMoveUp={moveColumnUp}
+            onMoveDown={moveColumnDown}
           />
           <button className="btn-primary whitespace-nowrap" onClick={() => window.print()}>
             Print / Save as PDF
@@ -593,84 +630,30 @@ export default function Report() {
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
             <colgroup>
-              {visibleDetailColumns.map((col) => (
+              {visibleColumnIds.map((id) => (
                 <col
-                  key={col.id}
+                  key={id}
                   className="print:w-[var(--col-w)]"
-                  style={{ '--col-w': `${columnWidthPct.get(col.id) ?? 0}%` } as React.CSSProperties}
+                  style={{ '--col-w': `${columnWidthPct.get(id) ?? 0}%` } as React.CSSProperties}
                 />
               ))}
-              {visibleCustomCols.map((col) => (
-                <col
-                  key={col.id}
-                  className="print:w-[var(--col-w)]"
-                  style={{ '--col-w': `${columnWidthPct.get(col.id) ?? 0}%` } as React.CSSProperties}
-                />
-              ))}
-              {notesVisible && (
-                <col
-                  className="print:w-[var(--col-w)]"
-                  style={{ '--col-w': `${columnWidthPct.get('notes') ?? 0}%` } as React.CSSProperties}
-                />
-              )}
-              {remarksVisible && (
-                <col
-                  className="print:w-[var(--col-w)]"
-                  style={{ '--col-w': `${columnWidthPct.get('remarks') ?? 0}%` } as React.CSSProperties}
-                />
-              )}
               <col className="w-8 print:hidden" />
             </colgroup>
             <thead className="bg-slate-100 text-slate-700">
               <tr>
-                {visibleDetailColumns.map((col) => (
+                {visibleColumnIds.map((id) => (
                   <Th
-                    key={col.id}
-                    className={
-                      col.id === 'status' || col.id === 'department' || col.id === 'ministry'
-                        ? '!whitespace-normal text-center'
-                        : 'text-left print:!whitespace-normal'
-                    }
-                    onClick={() => toggleSort(col.id)}
+                    key={id}
+                    className={columnHeaderClassName(id)}
+                    onClick={() => toggleSort(id)}
+                    title={customColsById.get(id)?.name}
                   >
                     <span className="inline-flex items-center gap-1">
-                      {col.label}
-                      <SortIndicator active={sortKey === col.id} dir={sortDir} />
+                      {columnHeaderLabel(id)}
+                      <SortIndicator active={sortKey === id} dir={sortDir} />
                     </span>
                   </Th>
                 ))}
-                {visibleCustomCols.map((col) => (
-                  <Th
-                    key={col.id}
-                    className={col.type === 'checkbox' ? 'text-center print:!whitespace-normal' : 'text-left print:!whitespace-normal'}
-                    onClick={() => toggleSort(col.id)}
-                    title={col.name}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {customFieldHeaderLabel(col.name)}
-                      <SortIndicator active={sortKey === col.id} dir={sortDir} />
-                    </span>
-                  </Th>
-                ))}
-                {notesVisible && (
-                  <Th className="!whitespace-normal text-left w-full print:w-auto" onClick={() => toggleSort('notes')}>
-                    <span className="inline-flex items-center gap-1">
-                      Notes
-                      <SortIndicator active={sortKey === 'notes'} dir={sortDir} />
-                    </span>
-                  </Th>
-                )}
-                {remarksVisible && (
-                  <Th
-                    className="!whitespace-normal text-center w-full print:w-auto"
-                    onClick={() => toggleSort('remarks')}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      Remarks
-                      <SortIndicator active={sortKey === 'remarks'} dir={sortDir} />
-                    </span>
-                  </Th>
-                )}
                 <Th className="print:hidden">{''}</Th>
               </tr>
             </thead>
@@ -683,47 +666,56 @@ export default function Report() {
                     else detailRowRefs.current.delete(e.id);
                   }}
                   style={detailRowHeight ? { height: `${detailRowHeight}px` } : undefined}
-                  className={highlightedDetails.has(e.id) ? 'bg-sky-100 print:bg-sky-100' : ''}
+                  className={highlightedDetails.has(e.id) ? 'bg-orange-100 print:bg-orange-100' : ''}
                 >
-                  {visibleDetailColumns.map((col) => (
-                    <Td
-                      key={col.id}
-                      className={`whitespace-normal break-words ${
-                        col.id === 'status' || col.id === 'department' || col.id === 'ministry' ? 'text-center' : 'text-left'
-                      }`}
-                    >
-                      {detailCellContent(e, col.id)}
-                    </Td>
-                  ))}
-                  {visibleCustomCols.map((col) => (
-                    <Td
-                      key={col.id}
-                      className={`whitespace-normal break-words ${
-                        col.type === 'checkbox' ? 'text-center' : 'text-left'
-                      }`}
-                    >
-                      {customFieldCellContent(e, col)}
-                    </Td>
-                  ))}
-                  {notesVisible && (
-                    <Td className="text-left w-full print:w-auto">
-                      <span className="block max-w-[16rem] break-words print:max-w-none">
-                        {e.statusDetails || ''}
-                      </span>
-                    </Td>
-                  )}
-                  {remarksVisible && (
-                    <Td className="text-center w-full print:w-auto">
-                      <textarea
-                        className="block w-full max-w-[16rem] mx-auto resize-none bg-transparent border-0 rounded px-1 py-0.5 -my-0.5 leading-tight text-center focus:outline-none focus:ring-1 focus:ring-primary-400 print:hidden"
-                        rows={1}
-                        value={remarksDrafts[e.id] ?? e.remarks}
-                        onChange={(ev) => handleRemarksChange(e.id, ev.target.value)}
-                        onBlur={() => handleRemarksBlur(e)}
-                      />
-                      <span className="hidden print:block break-words">{e.remarks || ''}</span>
-                    </Td>
-                  )}
+                  {visibleColumnIds.map((id) => {
+                    if (id === 'notes') {
+                      return (
+                        <Td key={id} className="text-left w-full print:w-auto">
+                          <span className="block max-w-[16rem] break-words print:max-w-none">
+                            {e.statusDetails || ''}
+                          </span>
+                        </Td>
+                      );
+                    }
+                    if (id === 'remarks') {
+                      return (
+                        <Td key={id} className="text-center w-full print:w-auto">
+                          <textarea
+                            className="block w-full max-w-[16rem] mx-auto resize-none bg-transparent border-0 rounded px-1 py-0.5 -my-0.5 leading-tight text-center focus:outline-none focus:ring-1 focus:ring-primary-400 print:hidden"
+                            rows={1}
+                            value={remarksDrafts[e.id] ?? e.remarks}
+                            onChange={(ev) => handleRemarksChange(e.id, ev.target.value)}
+                            onBlur={() => handleRemarksBlur(e)}
+                          />
+                          <span className="hidden print:block break-words">{e.remarks || ''}</span>
+                        </Td>
+                      );
+                    }
+                    const customCol = customColsById.get(id);
+                    if (customCol) {
+                      return (
+                        <Td
+                          key={id}
+                          className={`whitespace-normal break-words ${
+                            customCol.type === 'checkbox' ? 'text-center' : 'text-left'
+                          }`}
+                        >
+                          {customFieldCellContent(e, customCol)}
+                        </Td>
+                      );
+                    }
+                    return (
+                      <Td
+                        key={id}
+                        className={`whitespace-normal break-words ${
+                          id === 'status' || id === 'department' || id === 'ministry' ? 'text-center' : 'text-left'
+                        }`}
+                      >
+                        {detailCellContent(e, id)}
+                      </Td>
+                    );
+                  })}
                   <Td className="text-center print:hidden">
                     <HighlightButton
                       active={highlightedDetails.has(e.id)}
@@ -1009,7 +1001,7 @@ function HighlightButton({
     <button
       type="button"
       onClick={onClick}
-      className={`${active ? 'text-sky-500 hover:text-sky-600' : 'text-slate-300 hover:text-sky-400'} ${className}`}
+      className={`${active ? 'text-orange-500 hover:text-orange-600' : 'text-slate-300 hover:text-orange-400'} ${className}`}
       aria-label={active ? 'Remove highlight' : 'Highlight row'}
       title={active ? 'Remove highlight' : 'Highlight row'}
     >
