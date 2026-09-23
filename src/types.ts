@@ -160,25 +160,26 @@ export function customFieldColumns(categories: Category[]): CustomFieldDefinitio
       if (!byName.has(key)) byName.set(key, def);
     }
   }
-  // "Need License?" is pinned last rather than sorted alphabetically with the rest.
-  const isNeedLicense = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'need license';
+  // These four related checkbox fields are pulled out of alphabetical order
+  // and pinned in this fixed sequence rather than sorted with the rest.
+  // Matched by keyword rather than exact name, since field names are
+  // user-editable (renaming one shouldn't silently drop it from the group).
+  const pinnedIndex = (name: string): number => {
+    const n = name.trim().toLowerCase();
+    if (n.includes('license')) return 3;
+    if (n.includes('ms office')) return 0;
+    if (n.includes('critical')) return 1;
+    if (n.includes('prod')) return 2;
+    return -1;
+  };
+
   const columns = Array.from(byName.values()).sort((a, b) => {
-    const aLast = isNeedLicense(a.name);
-    const bLast = isNeedLicense(b.name);
-    if (aLast !== bLast) return aLast ? 1 : -1;
+    const aPinned = pinnedIndex(a.name);
+    const bPinned = pinnedIndex(b.name);
+    if (aPinned !== -1 && bPinned !== -1) return aPinned - bPinned;
+    if (aPinned !== -1 || bPinned !== -1) return aPinned !== -1 ? 1 : -1;
     return a.name.localeCompare(b.name);
   });
-
-  // "Uses MS Office?" is pulled out of alphabetical order to sit right before
-  // "Critical Ops?" rather than after it.
-  const isUsesMsOffice = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'uses ms office';
-  const isCriticalOps = (name: string) => name.trim().replace(/\?$/, '').toLowerCase() === 'critical ops';
-  const usesMsOfficeIndex = columns.findIndex((c) => isUsesMsOffice(c.name));
-  const criticalOpsIndex = columns.findIndex((c) => isCriticalOps(c.name));
-  if (usesMsOfficeIndex !== -1 && criticalOpsIndex !== -1 && usesMsOfficeIndex > criticalOpsIndex) {
-    const [usesMsOffice] = columns.splice(usesMsOfficeIndex, 1);
-    columns.splice(criticalOpsIndex, 0, usesMsOffice);
-  }
 
   return columns;
 }

@@ -19,11 +19,15 @@ export default function ColumnPickerButton({
   isVisible,
   onToggle,
   onShowAll,
+  onMoveUp,
+  onMoveDown,
 }: {
   columns: ColumnPickerOption[];
   isVisible: (id: string) => boolean;
   onToggle: (id: string) => void;
   onShowAll: () => void;
+  onMoveUp?: (id: string) => void;
+  onMoveDown?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -57,16 +61,42 @@ export default function ColumnPickerButton({
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-56 card p-3 space-y-0.5 z-30 shadow-lg max-h-80 overflow-y-auto">
-          {columns.map((col) => (
-            <label key={col.id} className="flex items-center gap-2 text-sm py-0.5 cursor-pointer">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={isVisible(col.id)}
-                onChange={() => onToggle(col.id)}
-              />
-              {col.label}
-            </label>
+          {columns.map((col, index) => (
+            <div key={col.id} className="flex items-center gap-1 py-0.5">
+              {onMoveUp && onMoveDown && (
+                <div className="flex flex-col shrink-0">
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400 leading-none"
+                    disabled={index === 0}
+                    onClick={() => onMoveUp(col.id)}
+                    title={`Move ${col.label} up`}
+                    aria-label={`Move ${col.label} up`}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400 leading-none"
+                    disabled={index === columns.length - 1}
+                    onClick={() => onMoveDown(col.id)}
+                    title={`Move ${col.label} down`}
+                    aria-label={`Move ${col.label} down`}
+                  >
+                    ▼
+                  </button>
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={isVisible(col.id)}
+                  onChange={() => onToggle(col.id)}
+                />
+                {col.label}
+              </label>
+            </div>
           ))}
           <div className="flex justify-end pt-1">
             <button type="button" className="text-xs text-slate-500 hover:underline" onClick={onShowAll}>
