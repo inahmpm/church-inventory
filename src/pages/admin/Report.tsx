@@ -60,6 +60,8 @@ const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
 };
 
 const today = formatDate(new Date());
+const HIGHLIGHT_LEGEND_STORAGE_KEY = 'report:highlightLegendText';
+const DEFAULT_HIGHLIGHT_LEGEND_TEXT = 'Highlighted rows need follow-up';
 
 interface PurchaseRow {
   id: number;
@@ -114,6 +116,21 @@ export default function Report() {
   const [customFieldDrafts, setCustomFieldDrafts] = useState<Record<string, string>>({});
   const detailRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [detailRowHeight, setDetailRowHeight] = useState<number | null>(null);
+  const [highlightLegendText, setHighlightLegendText] = useState(() => {
+    try {
+      return localStorage.getItem(HIGHLIGHT_LEGEND_STORAGE_KEY) ?? DEFAULT_HIGHLIGHT_LEGEND_TEXT;
+    } catch {
+      return DEFAULT_HIGHLIGHT_LEGEND_TEXT;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIGHLIGHT_LEGEND_STORAGE_KEY, highlightLegendText);
+    } catch {
+      // ignore write failures (e.g. private browsing quota)
+    }
+  }, [highlightLegendText]);
 
   useEffect(() => {
     setSection(ministry?.name ?? 'Technology');
@@ -733,6 +750,22 @@ export default function Report() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center gap-2 text-base text-slate-700 print:text-sm mt-3 print:mt-1.5">
+          <span className="font-semibold shrink-0">Legend:</span>
+          <span
+            aria-hidden="true"
+            className="inline-block h-7 w-12 shrink-0 rounded-md border border-slate-300 bg-orange-100"
+          />
+          <span>=</span>
+          <input
+            className="min-w-0 flex-1 max-w-sm bg-transparent border-0 border-b border-dashed border-slate-300 focus:outline-none focus:border-primary-400 print:hidden"
+            value={highlightLegendText}
+            onChange={(ev) => setHighlightLegendText(ev.target.value)}
+            placeholder={DEFAULT_HIGHLIGHT_LEGEND_TEXT}
+          />
+          <span className="hidden print:inline">{highlightLegendText}</span>
         </div>
       </div>
 
