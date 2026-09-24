@@ -491,13 +491,14 @@ export default function Report() {
   }, [visibleColumnIds, detailColsById, customColsById]);
 
   const summaryRows = useMemo(() => {
-    const byItem = new Map<string, Record<string, number>>();
+    const bySubcategory = new Map<string, Record<string, number>>();
     for (const e of filtered) {
-      const row = byItem.get(e.item) ?? {};
+      const key = e.subcategory || '—';
+      const row = bySubcategory.get(key) ?? {};
       row[e.status] = (row[e.status] ?? 0) + 1;
-      byItem.set(e.item, row);
+      bySubcategory.set(key, row);
     }
-    return Array.from(byItem.entries())
+    return Array.from(bySubcategory.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([item, counts]) => ({
         item,
@@ -793,7 +794,7 @@ export default function Report() {
           <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
-                <Th>Equipment Name</Th>
+                <Th>Sub Category</Th>
                 {EQUIPMENT_STATUSES.map((s) => (
                   <Th key={s}>{s}</Th>
                 ))}
