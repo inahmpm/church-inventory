@@ -16,21 +16,32 @@ import type { Category, CustomFieldDefinition, CustomFieldType } from '../types'
 
 const categoriesCol = collection(db, 'categories');
 
-export function subscribeCategories(ministryId: string, cb: (categories: Category[]) => void) {
+export function subscribeCategories(
+  ministryId: string,
+  cb: (categories: Category[]) => void,
+  onError?: (err: Error) => void,
+) {
   const q = query(categoriesCol, where('ministryId', '==', ministryId), orderBy('name'));
-  return onSnapshot(q, (snap) => {
-    cb(
-      snap.docs.map((d) => {
-        const data = d.data() as Omit<Category, 'id'>;
-        return {
-          id: d.id,
-          ...data,
-          customFields: data.customFields ?? [],
-          showCustomFields: data.showCustomFields ?? true,
-        };
-      }),
-    );
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Omit<Category, 'id'>;
+          return {
+            id: d.id,
+            ...data,
+            customFields: data.customFields ?? [],
+            showCustomFields: data.showCustomFields ?? true,
+          };
+        }),
+      );
+    },
+    (err) => {
+      console.error('Failed to load categories', err);
+      onError?.(err);
+    },
+  );
 }
 
 export async function createCategory(ministryId: string, name: string) {
