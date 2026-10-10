@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   addCustomField,
   addSubcategory,
@@ -78,10 +78,23 @@ export default function Categories() {
     type: 'text',
   });
   const [error, setError] = useState<string | null>(null);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const newCategoryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Clear the previous ministry's list so the duplicate-name check in
+    // handleAddCategory never runs against stale categories.
+    setCategories([]);
+    setEditingId(null);
     if (!ministryId) return;
-    return subscribeCategories(ministryId, setCategories);
+    return subscribeCategories(
+      ministryId,
+      (next) => {
+        setCategories(next);
+        setError(null);
+      },
+      (err) => setError(`Failed to load categories: ${err.message}`),
+    );
   }, [ministryId]);
 
   const filteredCategories = useMemo(() => {
@@ -112,18 +125,28 @@ export default function Categories() {
   async function handleAddCategory(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!ministryId) return;
+    if (!ministryId) {
+      setError('No ministry selected.');
+      return;
+    }
     const name = newCategory.trim();
-    if (!name) return;
+    if (!name) {
+      setError('Type a name in the "New category name" box, then click Add category.');
+      newCategoryInputRef.current?.focus();
+      return;
+    }
     if (categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
       alert(`"${name}" already exists.`);
       return;
     }
+    setAddingCategory(true);
     try {
       await createCategory(ministryId, name);
       setNewCategory('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add category.');
+    } finally {
+      setAddingCategory(false);
     }
   }
 
@@ -253,16 +276,18 @@ export default function Categories() {
           <form onSubmit={handleAddCategory} className="flex items-center gap-2">
             <input
               className="input text-sm sm:w-52"
+              ref={newCategoryInputRef}
               placeholder="New category name, e.g. Audio"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
             />
             <button
               type="submit"
-              className="btn-primary rounded-full whitespace-nowrap text-sm inline-flex items-center gap-1.5"
+              disabled={addingCategory}
+              className="btn-primary rounded-full whitespace-nowrap text-sm inline-flex items-center gap-1.5 disabled:opacity-60"
             >
               <IconPlus />
-              Add category
+              {addingCategory ? 'Adding…' : 'Add category'}
             </button>
           </form>
         </div>
