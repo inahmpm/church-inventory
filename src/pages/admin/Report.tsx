@@ -25,6 +25,7 @@ import { formatDate } from '../../lib/date';
 // of how many optional columns are toggled on.
 const DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
   { id: 'status', label: 'Status', weight: 5 },
+  { id: 'statusText', label: 'Condition', weight: 10 },
   { id: 'subcategory', label: 'Sub Category', weight: 9 },
   { id: 'item', label: 'Items', weight: 20 },
   { id: 'location', label: 'Location', weight: 8 },
@@ -326,6 +327,7 @@ export default function Report() {
   function sortValue(e: Equipment, key: string): string {
     switch (key) {
       case 'status':
+      case 'statusText':
         return e.status;
       case 'subcategory':
         return e.subcategory || '';
@@ -913,6 +915,8 @@ function detailCellContent(e: Equipment, columnId: string) {
   switch (columnId) {
     case 'status':
       return <StatusDot status={e.status} />;
+    case 'statusText':
+      return e.status;
     case 'item':
       return e.item;
     case 'location':

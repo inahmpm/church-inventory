@@ -2,8 +2,16 @@ import { useEffect, useState } from 'react';
 
 function reconcile(order: string[], allIds: string[]): string[] {
   const known = order.filter((id) => allIds.includes(id));
-  const missing = allIds.filter((id) => !known.includes(id));
-  return [...known, ...missing];
+  // Insert each column missing from the saved order right after the column
+  // that precedes it in the default order, so new columns appear in their
+  // natural spot instead of at the end.
+  const result = [...known];
+  allIds.forEach((id, i) => {
+    if (result.includes(id)) return;
+    const prev = i > 0 ? result.indexOf(allIds[i - 1]) : -1;
+    result.splice(prev + 1, 0, id);
+  });
+  return result;
 }
 
 /**
