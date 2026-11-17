@@ -30,8 +30,8 @@ const DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
   { id: 'item', label: 'Items', weight: 20 },
   { id: 'location', label: 'Location', weight: 8 },
   { id: 'area', label: 'Area', weight: 12 },
-  { id: 'assignedTo', label: 'Assigned to', weight: 19 },
-  { id: 'purchaseDate', label: 'Purchase Date', weight: 10 },
+  { id: 'assignedTo', label: 'Assigned to', weight: 15 },
+  { id: 'purchaseDate', label: 'Purchase Date', weight: 14 },
 ];
 
 // Additional Equipment Inventory columns, available via the Columns picker but
@@ -48,6 +48,28 @@ const EXTRA_DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
 
 const ALL_DETAIL_COLUMNS = [...DETAIL_COLUMNS, ...EXTRA_DETAIL_COLUMNS];
 const EXTRA_DETAIL_COLUMN_IDS = EXTRA_DETAIL_COLUMNS.map((col) => col.id);
+
+// One-time migration: column orders saved before the Condition column existed
+// (or while it was appended at the end) get Condition moved to sit right after
+// the Status dots. Other reorders the user made are kept as-is.
+const CONDITION_ORDER_MIGRATION_KEY = 'report-column-order-condition-migrated';
+(function migrateConditionColumnOrder() {
+  try {
+    if (localStorage.getItem(CONDITION_ORDER_MIGRATION_KEY)) return;
+    const raw = localStorage.getItem('report-column-order');
+    if (raw) {
+      const order = (JSON.parse(raw) as string[]).filter((id) => id !== 'statusText');
+      const statusIndex = order.indexOf('status');
+      if (statusIndex !== -1) {
+        order.splice(statusIndex + 1, 0, 'statusText');
+        localStorage.setItem('report-column-order', JSON.stringify(order));
+      }
+    }
+    localStorage.setItem(CONDITION_ORDER_MIGRATION_KEY, '1');
+  } catch {
+    // ignore malformed/inaccessible storage
+  }
+})();
 const CUSTOM_FIELD_COL_WEIGHT = 10;
 const NOTES_COL_WEIGHT = 20;
 const REMARKS_COL_WEIGHT = 20;
@@ -204,7 +226,7 @@ export default function Report() {
       <>
         <input
           type={def.type === 'date' ? 'date' : 'text'}
-          className="block w-full bg-transparent border-0 rounded px-1 py-0.5 -mx-1 -my-0.5 leading-tight focus:outline-none focus:ring-1 focus:ring-primary-400 print:hidden"
+          className="block w-full bg-transparent border-0 rounded px-1 py-0.5 -mx-1 -my-0.5 leading-tight text-center focus:outline-none focus:ring-1 focus:ring-primary-400 print:hidden"
           value={draft}
           onChange={(ev) => handleCustomFieldChange(e.id, def.id, ev.target.value)}
           onBlur={() => handleCustomFieldBlur(e, def.id)}
@@ -418,13 +440,13 @@ export default function Report() {
   }
 
   function columnHeaderClassName(id: string): string {
-    if (id === 'notes') return '!whitespace-normal text-left w-full print:w-auto';
+    if (id === 'notes') return '!whitespace-normal w-full print:w-auto';
     if (id === 'remarks') return '!whitespace-normal text-center w-full print:w-auto';
     const customCol = customColsById.get(id);
-    if (customCol) return customCol.type === 'checkbox' ? 'text-center print:!whitespace-normal' : 'text-left print:!whitespace-normal';
+    if (customCol) return 'print:!whitespace-normal';
     return id === 'status' || id === 'department' || id === 'ministry'
-      ? '!whitespace-normal text-center'
-      : 'text-left print:!whitespace-normal';
+      ? '!whitespace-normal'
+      : 'print:!whitespace-normal';
   }
 
   const columnPickerOptions = useMemo(
@@ -648,18 +670,24 @@ export default function Report() {
         </div>
 
         <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
+          <table className="w-full table-auto print:table-fixed text-xs sm:text-sm print:text-[10px] border-[0.5px] border-gray-200 print:border-gray-300 border-collapse">
             <colgroup>
               {visibleColumnIds.map((id) => (
                 <col
                   key={id}
-                  className="print:w-[var(--col-w)]"
+                  // Date columns never wrap, so give them a floor wide enough
+                  // for "Sep 30, 2024" even when many columns are visible.
+                  className={
+                    id === 'purchaseDate' || customColsById.get(id)?.type === 'date'
+                      ? 'print:w-[max(var(--col-w),7.5em)]'
+                      : 'print:w-[var(--col-w)]'
+                  }
                   style={{ '--col-w': `${columnWidthPct.get(id) ?? 0}%` } as React.CSSProperties}
                 />
               ))}
               <col className="w-8 print:hidden" />
             </colgroup>
-            <thead className="bg-slate-100 text-slate-700">
+            <thead className="bg-slate-100 text-black">
               <tr>
                 {visibleColumnIds.map((id) => (
                   <Th
@@ -686,13 +714,13 @@ export default function Report() {
                     else detailRowRefs.current.delete(e.id);
                   }}
                   style={detailRowHeight ? { height: `${detailRowHeight}px` } : undefined}
-                  className={highlightedDetails.has(e.id) ? 'bg-orange-100 print:bg-orange-100' : ''}
+                  className={highlightedDetails.has(e.id) ? 'bg-green-200 print:bg-green-200' : ''}
                 >
                   {visibleColumnIds.map((id) => {
                     if (id === 'notes') {
                       return (
-                        <Td key={id} className="text-left w-full print:w-auto">
-                          <span className="block max-w-[16rem] break-words print:max-w-none">
+                        <Td key={id} className="w-full print:w-auto">
+                          <span className="block max-w-[16rem] mx-auto break-words print:max-w-none">
                             {e.statusDetails || ''}
                           </span>
                         </Td>
@@ -717,9 +745,7 @@ export default function Report() {
                       return (
                         <Td
                           key={id}
-                          className={`whitespace-normal break-words ${
-                            customCol.type === 'checkbox' ? 'text-center' : 'text-left'
-                          }`}
+                          className={customCol.type === 'date' ? 'whitespace-nowrap' : 'whitespace-normal break-words'}
                         >
                           {customFieldCellContent(e, customCol)}
                         </Td>
@@ -728,9 +754,7 @@ export default function Report() {
                     return (
                       <Td
                         key={id}
-                        className={`whitespace-normal break-words ${
-                          id === 'status' || id === 'department' || id === 'ministry' ? 'text-center' : 'text-left'
-                        }`}
+                        className={id === 'purchaseDate' ? 'whitespace-nowrap' : 'whitespace-normal break-words'}
                       >
                         {detailCellContent(e, id)}
                       </Td>
@@ -755,15 +779,13 @@ export default function Report() {
           </table>
         </div>
 
-        <div className="flex items-center gap-2 text-base text-slate-700 print:text-sm mt-3 print:mt-1.5">
-          <span className="font-semibold shrink-0">Legend:</span>
+        <div className="!mt-4 print:!mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 print:text-[9px] print:px-2 print:py-1">
           <span
             aria-hidden="true"
-            className="inline-block h-7 w-12 shrink-0 rounded-md border border-slate-300 bg-orange-100"
+            className="inline-block h-2.5 w-4 shrink-0 rounded-sm border border-green-400 bg-green-200 print:h-2 print:w-3"
           />
-          <span>=</span>
           <input
-            className="min-w-0 flex-1 max-w-sm bg-transparent border-0 border-b border-dashed border-slate-300 focus:outline-none focus:border-primary-400 print:hidden"
+            className="min-w-0 w-64 bg-transparent border-0 border-b border-dashed border-slate-300 p-0 text-xs leading-tight focus:outline-none focus:border-primary-400 print:hidden"
             value={highlightLegendText}
             onChange={(ev) => setHighlightLegendText(ev.target.value)}
             placeholder={DEFAULT_HIGHLIGHT_LEGEND_TEXT}
@@ -793,8 +815,8 @@ export default function Report() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
-            <thead className="bg-slate-100 text-slate-700">
+          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border-[0.5px] border-gray-200 print:border-gray-300 border-collapse">
+            <thead className="bg-slate-100 text-black">
               <tr>
                 <Th>Sub Category</Th>
                 {EQUIPMENT_STATUSES.map((s) => (
@@ -825,7 +847,7 @@ export default function Report() {
             </tbody>
             {summaryRows.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-black font-semibold bg-slate-200">
+                <tr className="border-t border-gray-300 font-semibold bg-slate-200">
                   <Td>TOTAL</Td>
                   {EQUIPMENT_STATUSES.map((s) => (
                     <Td key={s} className="text-center">
@@ -842,15 +864,15 @@ export default function Report() {
 
       <div className="card space-y-3 print:space-y-1 print:shadow-none print:ring-0 print:p-0">
         <div className="flex items-center justify-between flex-wrap gap-1">
-          <h2 className="text-lg font-bold text-slate-800 print:text-xs">Purchase Description</h2>
+          <h2 className="text-lg font-bold text-slate-800 print:text-xs">Request Description</h2>
           <button className="btn-secondary print:hidden" onClick={addPurchaseRow} type="button">
             + Add Row
           </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border border-black border-collapse">
-            <thead className="bg-slate-100 text-slate-700">
+          <table className="min-w-full text-xs sm:text-sm print:text-[10px] border-[0.5px] border-gray-200 print:border-gray-300 border-collapse">
+            <thead className="bg-slate-100 text-black">
               <tr>
                 <Th>Proposed Items</Th>
                 <Th>Assigned to</Th>
@@ -979,7 +1001,7 @@ function Th({
 }) {
   return (
     <th
-      className={`border border-black px-2 py-2 lg:px-3 text-left font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${
+      className={`border-[0.5px] border-gray-200 print:border-gray-300 px-2 py-2 lg:px-3 text-center font-semibold whitespace-nowrap leading-tight print:whitespace-normal print:px-1 print:py-0.5 print:text-[10px] ${
         onClick ? 'cursor-pointer select-none hover:text-slate-900' : ''
       } ${className}`}
       onClick={onClick}
@@ -996,7 +1018,7 @@ function SortIndicator({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }
 
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <td className={`border border-black px-2 py-2 lg:px-3 align-middle text-slate-700 leading-tight print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
+    <td className={`border-[0.5px] border-gray-200 print:border-gray-300 px-2 py-2 lg:px-3 align-middle text-center text-black leading-tight print:px-1 print:py-0.5 print:text-[10px] ${className}`}>
       {children}
     </td>
   );
@@ -1039,7 +1061,7 @@ function HighlightButton({
     <button
       type="button"
       onClick={onClick}
-      className={`${active ? 'text-orange-500 hover:text-orange-600' : 'text-slate-300 hover:text-orange-400'} ${className}`}
+      className={`${active ? 'text-green-600 hover:text-green-700' : 'text-slate-300 hover:text-green-500'} ${className}`}
       aria-label={active ? 'Remove highlight' : 'Highlight row'}
       title={active ? 'Remove highlight' : 'Highlight row'}
     >
@@ -1080,7 +1102,7 @@ function AutoGrowTextarea({
   return (
     <textarea
       ref={ref}
-      className={`w-full min-w-[6rem] resize-none overflow-hidden rounded-lg border border-slate-200 px-2 py-1 text-inherit leading-snug focus:outline-none focus:ring-2 focus:ring-primary-500 print:border-none print:p-0 print:ring-0 print:placeholder:text-transparent ${className}`}
+      className={`w-full min-w-[6rem] resize-none overflow-hidden rounded-lg border border-slate-200 px-2 py-1 text-inherit text-center leading-snug focus:outline-none focus:ring-2 focus:ring-primary-500 print:border-none print:p-0 print:ring-0 print:placeholder:text-transparent ${className}`}
       value={value}
       onChange={(e) => {
         onChange(e.target.value);
@@ -1105,7 +1127,7 @@ function PurchaseInput({
 }) {
   return (
     <input
-      className={`w-full min-w-[6rem] rounded-lg border border-slate-200 px-2 py-1 text-inherit focus:outline-none focus:ring-2 focus:ring-primary-500 print:border-none print:p-0 print:ring-0 print:placeholder:text-transparent ${className}`}
+      className={`w-full min-w-[6rem] rounded-lg border border-slate-200 px-2 py-1 text-inherit text-center focus:outline-none focus:ring-2 focus:ring-primary-500 print:border-none print:p-0 print:ring-0 print:placeholder:text-transparent ${className}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
