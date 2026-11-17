@@ -25,7 +25,7 @@ import { formatDate } from '../../lib/date';
 // of how many optional columns are toggled on.
 const DETAIL_COLUMNS: { id: string; label: string; weight: number }[] = [
   { id: 'status', label: 'Status', weight: 5 },
-  { id: 'statusText', label: 'Condition', weight: 10 },
+  { id: 'statusText', label: 'Condition', weight: 13 },
   { id: 'subcategory', label: 'Sub Category', weight: 9 },
   { id: 'item', label: 'Items', weight: 20 },
   { id: 'location', label: 'Location', weight: 8 },
@@ -821,7 +821,7 @@ export default function Report() {
                     return (
                       <Td
                         key={id}
-                        className={id === 'purchaseDate' ? 'whitespace-nowrap' : 'whitespace-normal break-words'}
+                        className={id === 'purchaseDate' || id === 'statusText' ? 'whitespace-nowrap' : 'whitespace-normal break-words'}
                       >
                         {detailCellContent(e, id)}
                       </Td>
