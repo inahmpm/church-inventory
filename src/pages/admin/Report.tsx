@@ -95,9 +95,20 @@ const HIGHLIGHT_COLORS: Record<EquipmentStatus, { row: string; swatch: string }>
 const today = formatDate(new Date());
 const HIGHLIGHT_LEGEND_STORAGE_KEY = 'report:highlightLegendText';
 const HIGHLIGHT_LEGENDS_STORAGE_KEY = 'report:highlightLegendTexts';
+const HIGHLIGHT_DEFAULT_COLOR_STORAGE_KEY = 'report:highlightDefaultColor';
 const DEFAULT_HIGHLIGHT_LEGEND_TEXT = 'Highlighted rows need follow-up';
 // The single green highlight that existed before per-color highlights.
 const DEFAULT_HIGHLIGHT_COLOR: EquipmentStatus = 'Good Condition';
+
+function loadDefaultHighlightColor(): EquipmentStatus {
+  try {
+    const raw = localStorage.getItem(HIGHLIGHT_DEFAULT_COLOR_STORAGE_KEY);
+    if (raw && (EQUIPMENT_STATUSES as readonly string[]).includes(raw)) return raw as EquipmentStatus;
+  } catch {
+    // ignore inaccessible storage
+  }
+  return DEFAULT_HIGHLIGHT_COLOR;
+}
 
 function loadHighlightLegendTexts(): Partial<Record<EquipmentStatus, string>> {
   try {
@@ -156,6 +167,16 @@ export default function Report() {
   const detailRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [detailRowHeight, setDetailRowHeight] = useState<number | null>(null);
   const [highlightLegendTexts, setHighlightLegendTexts] = useState(loadHighlightLegendTexts);
+  // Color of the placeholder legend entry shown while no rows are highlighted.
+  const [defaultHighlightColor, setDefaultHighlightColor] = useState(loadDefaultHighlightColor);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIGHLIGHT_DEFAULT_COLOR_STORAGE_KEY, defaultHighlightColor);
+    } catch {
+      // ignore write failures
+    }
+  }, [defaultHighlightColor]);
 
   useEffect(() => {
     try {
@@ -166,12 +187,28 @@ export default function Report() {
   }, [highlightLegendTexts]);
 
   // Legend shows one entry per highlight color in use (in condition order);
-  // with nothing highlighted it keeps showing the default green entry.
+  // with nothing highlighted it keeps showing the default entry.
   const legendColors = useMemo(() => {
     const used = new Set(highlightedDetails.values());
     const colors = EQUIPMENT_STATUSES.filter((s) => used.has(s));
-    return colors.length > 0 ? colors : [DEFAULT_HIGHLIGHT_COLOR];
-  }, [highlightedDetails]);
+    return colors.length > 0 ? colors : [defaultHighlightColor];
+  }, [highlightedDetails, defaultHighlightColor]);
+
+  // Change a legend entry's color: rows highlighted with `from` switch to
+  // `to`, and the entry's text moves with it.
+  function recolorLegend(from: EquipmentStatus, to: EquipmentStatus) {
+    if (from === to) return;
+    setHighlightedDetails((prev) => {
+      const next = new Map(prev);
+      for (const [id, c] of next) if (c === from) next.set(id, to);
+      return next;
+    });
+    setHighlightLegendTexts((prev) => {
+      const { [from]: text, ...rest } = prev;
+      return { ...rest, [to]: text ?? DEFAULT_HIGHLIGHT_LEGEND_TEXT };
+    });
+    if (from === defaultHighlightColor) setDefaultHighlightColor(to);
+  }
 
   useEffect(() => {
     setSection(ministry?.name ?? 'Technology');
@@ -814,10 +851,14 @@ export default function Report() {
             const text = highlightLegendTexts[color] ?? DEFAULT_HIGHLIGHT_LEGEND_TEXT;
             return (
               <div key={color} className="flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  title={color}
-                  className={`inline-block h-2.5 w-4 shrink-0 rounded-sm border print:h-2 print:w-3 ${HIGHLIGHT_COLORS[color].swatch}`}
+                <HighlightButton
+                  color={color}
+                  onChange={(next) => next && recolorLegend(color, next)}
+                  disabledColors={legendColors.filter((c) => c !== color)}
+                  allowRemove={false}
+                  ariaLabel={`Legend color: ${color} — change color`}
+                  title={`${color} — click to change color`}
+                  buttonClassName={`inline-block h-2.5 w-4 shrink-0 rounded-sm border print:h-2 print:w-3 hover:ring-2 hover:ring-primary-300 ${HIGHLIGHT_COLORS[color].swatch}`}
                 />
                 <input
                   className="min-w-0 w-64 bg-transparent border-0 border-b border-dashed border-slate-300 p-0 text-xs leading-tight focus:outline-none focus:border-primary-400 print:hidden"
@@ -1090,9 +1131,21 @@ function StatusLegend() {
 function HighlightButton({
   color,
   onChange,
+  disabledColors = [],
+  allowRemove = true,
+  ariaLabel,
+  title,
+  buttonClassName,
 }: {
   color: EquipmentStatus | null;
   onChange: (color: EquipmentStatus | null) => void;
+  /** Colors shown but not selectable (e.g. already used by another legend entry). */
+  disabledColors?: EquipmentStatus[];
+  allowRemove?: boolean;
+  ariaLabel?: string;
+  title?: string;
+  /** When set, the trigger renders as a plain swatch with these classes instead of the marker icon. */
+  buttonClassName?: string;
 }) {
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -1138,19 +1191,19 @@ function HighlightButton({
         ref={buttonRef}
         type="button"
         onClick={toggleMenu}
-        className={color ? 'text-slate-600 hover:text-slate-800' : 'text-slate-300 hover:text-slate-500'}
-        aria-label={color ? `Highlighted (${color}) — change highlight` : 'Highlight row'}
+        className={buttonClassName ?? (color ? 'text-slate-600 hover:text-slate-800' : 'text-slate-300 hover:text-slate-500')}
+        aria-label={ariaLabel ?? (color ? `Highlighted (${color}) — change highlight` : 'Highlight row')}
         aria-haspopup="menu"
         aria-expanded={menuPos !== null}
-        title={color ? `Highlighted: ${color}` : 'Highlight row'}
+        title={title ?? (color ? `Highlighted: ${color}` : 'Highlight row')}
       >
-        <svg viewBox="0 0 20 20" className="w-3 h-3" fill={color ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
+        {!buttonClassName && <svg viewBox="0 0 20 20" className="w-3 h-3" fill={color ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
             d="M9 12l-4.5 4.5a1.5 1.5 0 01-2.121-2.121L7 9.5m2-2l4.086-4.086a2 2 0 012.828 0l.586.586a2 2 0 010 2.828L12.414 11m-3.5-3.5l3.5 3.5"
           />
-        </svg>
+        </svg>}
       </button>
       {menuPos && (
         <div
@@ -1165,8 +1218,9 @@ function HighlightButton({
               type="button"
               role="menuitemradio"
               aria-checked={color === status}
+              disabled={disabledColors.includes(status)}
               onClick={() => choose(status)}
-              className={`flex w-full items-center gap-2 rounded px-2 py-1 hover:bg-slate-100 ${
+              className={`flex w-full items-center gap-2 rounded px-2 py-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
                 color === status ? 'font-semibold' : ''
               }`}
             >
@@ -1175,7 +1229,7 @@ function HighlightButton({
               {color === status && <span className="ml-auto">✓</span>}
             </button>
           ))}
-          {color && (
+          {color && allowRemove && (
             <button
               type="button"
               role="menuitem"
