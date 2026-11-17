@@ -82,9 +82,34 @@ const STATUS_DOT_COLORS: Record<EquipmentStatus, string> = {
   'For Disposal': 'bg-red-500',
 };
 
+// Light row-highlight tints that match each condition's dot color. Class
+// strings are spelled out in full so Tailwind keeps them in the build.
+const HIGHLIGHT_COLORS: Record<EquipmentStatus, { row: string; swatch: string }> = {
+  'Good Condition': { row: 'bg-green-200 print:bg-green-200', swatch: 'bg-green-200 border-green-400' },
+  'Fair Condition': { row: 'bg-yellow-200 print:bg-yellow-200', swatch: 'bg-yellow-200 border-yellow-400' },
+  'For Repair': { row: 'bg-orange-200 print:bg-orange-200', swatch: 'bg-orange-200 border-orange-400' },
+  'For Replacement': { row: 'bg-purple-200 print:bg-purple-200', swatch: 'bg-purple-200 border-purple-400' },
+  'For Disposal': { row: 'bg-red-200 print:bg-red-200', swatch: 'bg-red-200 border-red-400' },
+};
+
 const today = formatDate(new Date());
 const HIGHLIGHT_LEGEND_STORAGE_KEY = 'report:highlightLegendText';
+const HIGHLIGHT_LEGENDS_STORAGE_KEY = 'report:highlightLegendTexts';
 const DEFAULT_HIGHLIGHT_LEGEND_TEXT = 'Highlighted rows need follow-up';
+// The single green highlight that existed before per-color highlights.
+const DEFAULT_HIGHLIGHT_COLOR: EquipmentStatus = 'Good Condition';
+
+function loadHighlightLegendTexts(): Partial<Record<EquipmentStatus, string>> {
+  try {
+    const raw = localStorage.getItem(HIGHLIGHT_LEGENDS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+    // Carry over the legend text saved before highlights had multiple colors.
+    const legacy = localStorage.getItem(HIGHLIGHT_LEGEND_STORAGE_KEY);
+    return legacy !== null ? { [DEFAULT_HIGHLIGHT_COLOR]: legacy } : {};
+  } catch {
+    return {};
+  }
+}
 
 interface PurchaseRow {
   id: number;
@@ -96,16 +121,6 @@ interface PurchaseRow {
 
 function emptyPurchaseRow(id: number): PurchaseRow {
   return { id, item: '', assignedTo: '', qty: '', reason: '' };
-}
-
-function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
-  const next = new Set(set);
-  if (next.has(value)) {
-    next.delete(value);
-  } else {
-    next.add(value);
-  }
-  return next;
 }
 
 function IconFilter() {
@@ -133,34 +148,42 @@ export default function Report() {
   const filterRef = useRef<HTMLDivElement>(null);
   const nextRowId = useRef(1);
   const [purchaseRows, setPurchaseRows] = useState<PurchaseRow[]>([emptyPurchaseRow(0)]);
-  const [highlightedDetails, setHighlightedDetails] = useState<Set<string>>(new Set());
+  // Equipment id -> the condition color its row is highlighted with.
+  const [highlightedDetails, setHighlightedDetails] = useState<Map<string, EquipmentStatus>>(new Map());
   const [remarksDrafts, setRemarksDrafts] = useState<Record<string, string>>({});
   // Keyed by `${equipmentId}:${customFieldDefId}`.
   const [customFieldDrafts, setCustomFieldDrafts] = useState<Record<string, string>>({});
   const detailRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const [detailRowHeight, setDetailRowHeight] = useState<number | null>(null);
-  const [highlightLegendText, setHighlightLegendText] = useState(() => {
-    try {
-      return localStorage.getItem(HIGHLIGHT_LEGEND_STORAGE_KEY) ?? DEFAULT_HIGHLIGHT_LEGEND_TEXT;
-    } catch {
-      return DEFAULT_HIGHLIGHT_LEGEND_TEXT;
-    }
-  });
+  const [highlightLegendTexts, setHighlightLegendTexts] = useState(loadHighlightLegendTexts);
 
   useEffect(() => {
     try {
-      localStorage.setItem(HIGHLIGHT_LEGEND_STORAGE_KEY, highlightLegendText);
+      localStorage.setItem(HIGHLIGHT_LEGENDS_STORAGE_KEY, JSON.stringify(highlightLegendTexts));
     } catch {
       // ignore write failures (e.g. private browsing quota)
     }
-  }, [highlightLegendText]);
+  }, [highlightLegendTexts]);
+
+  // Legend shows one entry per highlight color in use (in condition order);
+  // with nothing highlighted it keeps showing the default green entry.
+  const legendColors = useMemo(() => {
+    const used = new Set(highlightedDetails.values());
+    const colors = EQUIPMENT_STATUSES.filter((s) => used.has(s));
+    return colors.length > 0 ? colors : [DEFAULT_HIGHLIGHT_COLOR];
+  }, [highlightedDetails]);
 
   useEffect(() => {
     setSection(ministry?.name ?? 'Technology');
   }, [ministry?.name]);
 
-  function toggleDetailHighlight(id: string) {
-    setHighlightedDetails((prev) => toggleInSet(prev, id));
+  function setDetailHighlight(id: string, color: EquipmentStatus | null) {
+    setHighlightedDetails((prev) => {
+      const next = new Map(prev);
+      if (color) next.set(id, color);
+      else next.delete(id);
+      return next;
+    });
   }
 
   function handleRemarksChange(id: string, value: string) {
@@ -667,6 +690,10 @@ export default function Report() {
             <span className="font-semibold text-slate-700">Category: </span>
             {category}
           </div>
+          <div>
+            <span className="font-semibold text-slate-700">Sub Category: </span>
+            {subcategoryLabel}
+          </div>
         </div>
 
         <div className="overflow-x-auto print:overflow-visible">
@@ -714,7 +741,10 @@ export default function Report() {
                     else detailRowRefs.current.delete(e.id);
                   }}
                   style={detailRowHeight ? { height: `${detailRowHeight}px` } : undefined}
-                  className={highlightedDetails.has(e.id) ? 'bg-green-200 print:bg-green-200' : ''}
+                  className={(() => {
+                    const color = highlightedDetails.get(e.id);
+                    return color ? HIGHLIGHT_COLORS[color].row : '';
+                  })()}
                 >
                   {visibleColumnIds.map((id) => {
                     if (id === 'notes') {
@@ -762,8 +792,8 @@ export default function Report() {
                   })}
                   <Td className="text-center print:hidden">
                     <HighlightButton
-                      active={highlightedDetails.has(e.id)}
-                      onClick={() => toggleDetailHighlight(e.id)}
+                      color={highlightedDetails.get(e.id) ?? null}
+                      onChange={(color) => setDetailHighlight(e.id, color)}
                     />
                   </Td>
                 </tr>
@@ -779,22 +809,31 @@ export default function Report() {
           </table>
         </div>
 
-        <div className="!mt-4 print:!mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 print:text-[9px] print:px-2 print:py-1">
-          <span
-            aria-hidden="true"
-            className="inline-block h-2.5 w-4 shrink-0 rounded-sm border border-green-400 bg-green-200 print:h-2 print:w-3"
-          />
-          <input
-            className="min-w-0 w-64 bg-transparent border-0 border-b border-dashed border-slate-300 p-0 text-xs leading-tight focus:outline-none focus:border-primary-400 print:hidden"
-            value={highlightLegendText}
-            onChange={(ev) => setHighlightLegendText(ev.target.value)}
-            placeholder={DEFAULT_HIGHLIGHT_LEGEND_TEXT}
-          />
-          <span className="hidden print:inline">{highlightLegendText}</span>
+        <div className="!mt-4 print:!mt-2 inline-flex max-w-full flex-col gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 print:text-[9px] print:px-2 print:py-1 print:gap-0.5">
+          {legendColors.map((color) => {
+            const text = highlightLegendTexts[color] ?? DEFAULT_HIGHLIGHT_LEGEND_TEXT;
+            return (
+              <div key={color} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  title={color}
+                  className={`inline-block h-2.5 w-4 shrink-0 rounded-sm border print:h-2 print:w-3 ${HIGHLIGHT_COLORS[color].swatch}`}
+                />
+                <input
+                  className="min-w-0 w-64 bg-transparent border-0 border-b border-dashed border-slate-300 p-0 text-xs leading-tight focus:outline-none focus:border-primary-400 print:hidden"
+                  value={text}
+                  onChange={(ev) => setHighlightLegendTexts((prev) => ({ ...prev, [color]: ev.target.value }))}
+                  placeholder={DEFAULT_HIGHLIGHT_LEGEND_TEXT}
+                  aria-label={`Legend text for ${color} highlight`}
+                />
+                <span className="hidden print:inline">{text}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="card space-y-3 print:space-y-1 print:break-before-page print:shadow-none print:ring-0 print:p-0">
+      <div className="card !mt-8 space-y-3 print:!mt-4 print:space-y-1 print:break-before-page print:shadow-none print:ring-0 print:p-0">
         <div className="flex items-baseline justify-between flex-wrap gap-1">
           <h2 className="text-lg font-bold text-slate-800 print:text-xs">EQUIPMENT INVENTORY SUMMARY</h2>
           <span className="text-sm text-slate-500 print:text-[10px]">as of {today}</span>
@@ -862,7 +901,7 @@ export default function Report() {
         </div>
       </div>
 
-      <div className="card space-y-3 print:space-y-1 print:shadow-none print:ring-0 print:p-0">
+      <div className="card !mt-8 space-y-3 print:!mt-4 print:space-y-1 print:shadow-none print:ring-0 print:p-0">
         <div className="flex items-center justify-between flex-wrap gap-1">
           <h2 className="text-lg font-bold text-slate-800 print:text-xs">Request Description</h2>
           <button className="btn-secondary print:hidden" onClick={addPurchaseRow} type="button">
@@ -874,9 +913,9 @@ export default function Report() {
           <table className="min-w-full text-xs sm:text-sm print:text-[10px] border-[0.5px] border-gray-200 print:border-gray-300 border-collapse">
             <thead className="bg-slate-100 text-black">
               <tr>
-                <Th>Proposed Items</Th>
+                <Th>Items</Th>
                 <Th>Assigned to</Th>
-                <Th>QTY</Th>
+                <Th>Qty</Th>
                 <Th>Reason for Purchase/Repair</Th>
                 <Th className="print:hidden"> </Th>
               </tr>
@@ -1049,30 +1088,106 @@ function StatusLegend() {
 }
 
 function HighlightButton({
-  active,
-  onClick,
-  className = '',
+  color,
+  onChange,
 }: {
-  active: boolean;
-  onClick: () => void;
-  className?: string;
+  color: EquipmentStatus | null;
+  onChange: (color: EquipmentStatus | null) => void;
 }) {
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuPos) return;
+    function close(event: Event) {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      setMenuPos(null);
+    }
+    function closeNow() {
+      setMenuPos(null);
+    }
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', closeNow, true);
+    window.addEventListener('resize', closeNow);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', closeNow, true);
+      window.removeEventListener('resize', closeNow);
+    };
+  }, [menuPos]);
+
+  function toggleMenu() {
+    if (menuPos) {
+      setMenuPos(null);
+      return;
+    }
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  }
+
+  function choose(next: EquipmentStatus | null) {
+    onChange(next);
+    setMenuPos(null);
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${active ? 'text-green-600 hover:text-green-700' : 'text-slate-300 hover:text-green-500'} ${className}`}
-      aria-label={active ? 'Remove highlight' : 'Highlight row'}
-      title={active ? 'Remove highlight' : 'Highlight row'}
-    >
-      <svg viewBox="0 0 20 20" className="w-3 h-3" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M9 12l-4.5 4.5a1.5 1.5 0 01-2.121-2.121L7 9.5m2-2l4.086-4.086a2 2 0 012.828 0l.586.586a2 2 0 010 2.828L12.414 11m-3.5-3.5l3.5 3.5"
-        />
-      </svg>
-    </button>
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={toggleMenu}
+        className={color ? 'text-slate-600 hover:text-slate-800' : 'text-slate-300 hover:text-slate-500'}
+        aria-label={color ? `Highlighted (${color}) — change highlight` : 'Highlight row'}
+        aria-haspopup="menu"
+        aria-expanded={menuPos !== null}
+        title={color ? `Highlighted: ${color}` : 'Highlight row'}
+      >
+        <svg viewBox="0 0 20 20" className="w-3 h-3" fill={color ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12l-4.5 4.5a1.5 1.5 0 01-2.121-2.121L7 9.5m2-2l4.086-4.086a2 2 0 012.828 0l.586.586a2 2 0 010 2.828L12.414 11m-3.5-3.5l3.5 3.5"
+          />
+        </svg>
+      </button>
+      {menuPos && (
+        <div
+          ref={menuRef}
+          role="menu"
+          className="fixed z-40 w-44 rounded-lg border border-slate-200 bg-white p-1 text-left text-xs text-slate-700 shadow-lg print:hidden"
+          style={{ top: menuPos.top, right: menuPos.right }}
+        >
+          {EQUIPMENT_STATUSES.map((status) => (
+            <button
+              key={status}
+              type="button"
+              role="menuitemradio"
+              aria-checked={color === status}
+              onClick={() => choose(status)}
+              className={`flex w-full items-center gap-2 rounded px-2 py-1 hover:bg-slate-100 ${
+                color === status ? 'font-semibold' : ''
+              }`}
+            >
+              <span className={`inline-block h-2.5 w-4 shrink-0 rounded-sm border ${HIGHLIGHT_COLORS[status].swatch}`} />
+              {status}
+              {color === status && <span className="ml-auto">✓</span>}
+            </button>
+          ))}
+          {color && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => choose(null)}
+              className="mt-1 flex w-full items-center gap-2 rounded border-t border-slate-100 px-2 py-1 text-slate-500 hover:bg-slate-100"
+            >
+              Remove highlight
+            </button>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1099,18 +1214,23 @@ function AutoGrowTextarea({
     resize(ref.current);
   }, [value]);
 
+  // The textarea's JS-set height comes from its screen size, which leaves text
+  // stuck at the top once print shrinks the font, so print plain text instead.
   return (
-    <textarea
-      ref={ref}
-      className={`w-full min-w-[6rem] resize-none overflow-hidden rounded-lg border border-slate-200 px-2 py-1 text-inherit text-center leading-snug focus:outline-none focus:ring-2 focus:ring-primary-500 print:border-none print:p-0 print:ring-0 print:placeholder:text-transparent ${className}`}
-      value={value}
-      onChange={(e) => {
-        onChange(e.target.value);
-        resize(e.target);
-      }}
-      placeholder={placeholder}
-      rows={1}
-    />
+    <>
+      <textarea
+        ref={ref}
+        className={`block w-full min-w-[6rem] resize-none overflow-hidden rounded-lg border border-slate-200 px-2 py-1 text-inherit text-center leading-normal align-middle focus:outline-none focus:ring-2 focus:ring-primary-500 print:hidden ${className}`}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          resize(e.target);
+        }}
+        placeholder={placeholder}
+        rows={1}
+      />
+      <span className="hidden print:block whitespace-pre-wrap break-words">{value}</span>
+    </>
   );
 }
 
